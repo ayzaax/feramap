@@ -54,7 +54,7 @@ const STATUS_COLORS = {
 
 const FILTERS = ['All', 'Spotted', 'Trapped', 'Neutered', 'Returned'];
 
-export default function MapScreen() {
+export default function MapScreen({ navigation }) {
   const mapRef = useRef(null);
 
   return (
@@ -117,9 +117,9 @@ export default function MapScreen() {
       </View>
 
       {/* floating + button */}
-      <TouchableOpacity style={styles.fab}>
-        <Text style={styles.fabText}>+</Text>
-      </TouchableOpacity>
+     <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('Report')}>
+    <Text style={styles.fabText}>+</Text>
+  </TouchableOpacity>
 
       {/* cats nearby strip */}
       <View style={[styles.bottomSheet, { bottom: 0 }]}>

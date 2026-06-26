@@ -1,10 +1,7 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, Text } from 'react-native';
+import LocationScreen from '../screens/report/LocationScreen';
 
-// placeholder screens — we'll replace these one by one
-function LocationScreen() {
-  return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><Text>Location</Text></View>;
-}
 function IdentifyScreen() {
   return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><Text>Identify</Text></View>;
 }

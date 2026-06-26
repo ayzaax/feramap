@@ -1,10 +1,7 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, Text } from 'react-native';
 import LocationScreen from '../screens/report/LocationScreen';
-
-function IdentifyScreen() {
-  return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><Text>Identify</Text></View>;
-}
+import IdentifyScreen from '../screens/report/IdentifyScreen';
 function CameraScreen() {
   return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><Text>Camera</Text></View>;
 }

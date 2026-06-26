@@ -3,9 +3,7 @@ import { View, Text } from 'react-native';
 import LocationScreen from '../screens/report/LocationScreen';
 import IdentifyScreen from '../screens/report/IdentifyScreen';
 import CameraScreen from '../screens/report/CameraScreen';
-function DetailsScreen() {
-  return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><Text>Details</Text></View>;
-}
+import DetailsScreen from '../screens/report/DetailsScreen';
 function SuccessScreen() {
   return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><Text>Success</Text></View>;
 }

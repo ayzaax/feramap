@@ -10,13 +10,24 @@ import {
   Platform,
   ScrollView,
 } from 'react-native' ;
+import { supabase } from '../lib/supabase';
 
 export default function LoginScreen({ onLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleLogin = () => {
-    onLogin(); // this switches to the tab bar
+  const handleLogin = async () => {
+    setLoading(true);
+    setError('');
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+    } else {
+      onLogin();
+    }
   };
 
     return (
@@ -69,9 +80,16 @@ export default function LoginScreen({ onLogin }) {
           </TouchableOpacity>
         </View>
 
+              {/* error message */}
+              {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
               {/* login button */}
-              <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-                <Text style={styles.loginButtonText}>Login</Text>
+              <TouchableOpacity
+                style={[styles.loginButton, loading && styles.loginButtonDisabled]}
+                onPress={handleLogin}
+                disabled={loading}
+              >
+                <Text style={styles.loginButtonText}>{loading ? 'Logging in...' : 'Login'}</Text>
               </TouchableOpacity>
 
 
@@ -133,6 +151,15 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  errorText: {
+    color: '#c0392b',
+    fontSize: 13,
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+  },
+  loginButtonDisabled: {
+    opacity: 0.6,
   },
   signupRow: {
     flexDirection: 'row',

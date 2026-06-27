@@ -49,7 +49,10 @@ export default function SuccessScreen({ navigation, route }) {
       </View>
 
       {/* buttons */}
-      <TouchableOpacity style={styles.primaryButton}>
+      <TouchableOpacity
+        style={styles.primaryButton}
+        onPress={() => navigation.getParent()?.navigate('CatProfile')}
+      >
         <Text style={styles.primaryButtonText}>View full profile</Text>
       </TouchableOpacity>
 

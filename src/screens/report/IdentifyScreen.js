@@ -38,7 +38,7 @@ export default function IdentifyScreen({ navigation }) {
 
       <TouchableOpacity
         style={styles.button}
-        onPress={() => navigation.navigate('Camera')}
+        onPress={() => navigation.navigate('Camera', { selectedCatId: selected, isNewCat: selected === 'new' })}
       >
         <Text style={styles.buttonText}>Continue  →</Text>
       </TouchableOpacity>

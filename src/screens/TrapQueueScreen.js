@@ -17,7 +17,7 @@ const PRIORITY_COLORS = {
   Urgent: '#E8725A',
 };
 
-export default function TrapQueueScreen() {
+export default function TrapQueueScreen({ navigation }) {
   const [activeFilter, setActiveFilter] = useState('All');
 
   const filtered = activeFilter === 'All'
@@ -28,6 +28,9 @@ export default function TrapQueueScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <Text style={styles.backArrow}>←</Text>
+      </TouchableOpacity>
       <Text style={styles.title}>{FAKE_CATS.length} cats need help</Text>
       <Text style={styles.subtitle}>Sorted by priority</Text>
 
@@ -186,5 +189,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     textAlign: 'center',
+  },
+  backButton: {
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+  },
+  backArrow: {
+    fontSize: 28,
+    color: '#9B30D9',
+    fontWeight: '600',
   },
 });

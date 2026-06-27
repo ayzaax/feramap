@@ -20,11 +20,16 @@ const FAKE_CAT = {
   ],
 };
 
-export default function CatProfileScreen() {
+export default function CatProfileScreen({ navigation }) {
   const cat = FAKE_CAT;
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+
+      {/* back button */}
+      <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <Text style={styles.backArrow}>←</Text>
+      </TouchableOpacity>
 
       {/* polaroid stack */}
       <View style={styles.photoStack}>
@@ -258,5 +263,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     textAlign: 'center',
+  },
+  backButton: {
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+  },
+  backArrow: {
+    fontSize: 28,
+    color: '#9B30D9',
+    fontWeight: '600',
   },
 });

@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import TabNavigator from './src/navigation/TabNavigator';
 import ReportNavigator from './src/navigation/ReportNavigator';
 import LoginScreen from './src/screens/LoginScreen';
+import CatProfileScreen from './src/screens/CatProfileScreen';
 
 const RootStack = createNativeStackNavigator();
 
@@ -31,6 +32,7 @@ export default function App() {
             component={ReportNavigator}
             options={{ presentation: 'modal' }}
           />
+          <RootStack.Screen name="CatProfile" component={CatProfileScreen} />
         </RootStack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

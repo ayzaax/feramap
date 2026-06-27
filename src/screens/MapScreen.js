@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,42 +8,7 @@ import {
   TextInput,
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
-
-// fake cats data for now — we'll replace with Supabase later
-const FAKE_CATS = [
-  {
-    id: '1',
-    name: 'Taco',
-    status: 'spotted',
-    latitude: 25.5428,
-    longitude: -103.4068,
-    notes: 'Orange tabby near the taqueria',
-  },
-  {
-    id: '2',
-    name: 'Luna',
-    status: 'neutered',
-    latitude: 25.5435,
-    longitude: -103.4058,
-    notes: 'Friendly tortoiseshell',
-  },
-  {
-    id: '3',
-    name: 'Gordo',
-    status: 'returned',
-    latitude: 25.5420,
-    longitude: -103.4075,
-    notes: 'Big grey cat near the plaza',
-  },
-  {
-    id: '4',
-    name: 'Sombra',
-    status: 'trapped',
-    latitude: 25.5440,
-    longitude: -103.4050,
-    notes: 'Black cat, shy',
-  },
-];
+import { supabase } from '../lib/supabase';
 
 const STATUS_COLORS = {
   spotted: '#EF9F27',
@@ -56,6 +21,24 @@ const FILTERS = ['All', 'Spotted', 'Trapped', 'Neutered', 'Returned'];
 
 export default function MapScreen({ navigation }) {
   const mapRef = useRef(null);
+  const [cats, setCats] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCats = async () => {
+      const { data, error } = await supabase
+        .rpc('get_cats_with_locations');
+
+      console.log('cats:', JSON.stringify(data, null, 2));
+
+      if (!error && data) {
+        setCats(data);
+      }
+      setLoading(false);
+    };
+
+    fetchCats();
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -73,7 +56,7 @@ export default function MapScreen({ navigation }) {
         showsUserLocation
         showsMyLocationButton={false}
       >
-        {FAKE_CATS.map((cat) => (
+        {!loading && cats.map((cat) => (
           <Marker
             key={cat.id}
             coordinate={{
@@ -81,7 +64,6 @@ export default function MapScreen({ navigation }) {
               longitude: cat.longitude,
             }}
             title={cat.name}
-            description={cat.notes}
           >
             <View style={[
               styles.catMarker,
@@ -126,7 +108,7 @@ export default function MapScreen({ navigation }) {
         <View style={styles.handle} />
         <Text style={styles.nearbyLabel}>Cats nearby</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {FAKE_CATS.map((cat) => (
+          {!loading && cats.map((cat) => (
             <TouchableOpacity key={cat.id} style={styles.catChip}>
               <View
                 style={[

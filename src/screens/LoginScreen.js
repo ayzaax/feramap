@@ -1,6 +1,6 @@
-import { useState } from 'react' ;
+import { useState } from 'react';
 import {
-     View,
+  View,
   Text,
   TextInput,
   TouchableOpacity,
@@ -9,14 +9,23 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-} from 'react-native' ;
+} from 'react-native';
 import { supabase } from '../lib/supabase';
 
 export default function LoginScreen({ onLogin }) {
+  const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const switchMode = (next) => {
+    setMode(next);
+    setError('');
+    setPassword('');
+    setConfirmPassword('');
+  };
 
   const handleLogin = async () => {
     setLoading(true);
@@ -30,72 +39,120 @@ export default function LoginScreen({ onLogin }) {
     }
   };
 
-    return (
-        <KeyboardAvoidingView 
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-            <ScrollView contentContainerStyle={styles.scroll}>
-              {/* cat illustration */}
-              <View style={styles.catContainer}>
-                <Image source={require('../../assets/cat-logo.png')}
-                style={styles.catImage}
-                />
-              </View>
+  const handleSignup = async () => {
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+    } else {
+      onLogin();
+    }
+  };
 
-              {/* welcome text */}
-              <Text style={styles.title}>Welcome back!</Text>
+  const isLogin = mode === 'login';
 
-              {/* email input */}
-              <TextInput
-                style={styles.input}
-                placeholder="email@example.com"
-                placeholderTextColor="#ccc"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                />
-              
-              {/* password input */}
-              <TextInput
-                style={styles.input}
-                placeholder="password"
-                placeholderTextColor="#ccc"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                />
-
-              {/* forgot password */}
-                <TouchableOpacity>
-                <Text style={styles.forgotText}>I forgot my password</Text>
-                </TouchableOpacity>
-
-                {/* sign up link */}
-        <View style={styles.signupRow}>
-          <Text style={styles.signupText}>Don't have an account? </Text>
-          <TouchableOpacity>
-            <Text style={styles.signupLink}>Make one</Text>
-          </TouchableOpacity>
+  return (
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView contentContainerStyle={styles.scroll}>
+        {/* cat illustration */}
+        <View style={styles.catContainer}>
+          <Image
+            source={require('../../assets/cat-logo.png')}
+            style={styles.catImage}
+          />
         </View>
 
-              {/* error message */}
-              {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {/* title */}
+        <Text style={styles.title}>
+          {isLogin ? 'Welcome back!' : 'Create an account'}
+        </Text>
 
-              {/* login button */}
-              <TouchableOpacity
-                style={[styles.loginButton, loading && styles.loginButtonDisabled]}
-                onPress={handleLogin}
-                disabled={loading}
-              >
-                <Text style={styles.loginButtonText}>{loading ? 'Logging in...' : 'Login'}</Text>
+        {/* email input */}
+        <TextInput
+          style={styles.input}
+          placeholder="email@example.com"
+          placeholderTextColor="#ccc"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+
+        {/* password input */}
+        <TextInput
+          style={styles.input}
+          placeholder="password"
+          placeholderTextColor="#ccc"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+
+        {/* confirm password — signup only */}
+        {!isLogin && (
+          <TextInput
+            style={styles.input}
+            placeholder="confirm password"
+            placeholderTextColor="#ccc"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry
+          />
+        )}
+
+        {/* forgot password — login only */}
+        {isLogin && (
+          <TouchableOpacity>
+            <Text style={styles.forgotText}>I forgot my password</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* mode toggle */}
+        <View style={styles.toggleRow}>
+          {isLogin ? (
+            <>
+              <Text style={styles.toggleText}>Don't have an account? </Text>
+              <TouchableOpacity onPress={() => switchMode('signup')}>
+                <Text style={styles.toggleLink}>Make one</Text>
               </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={styles.toggleText}>Already have an account? </Text>
+              <TouchableOpacity onPress={() => switchMode('login')}>
+                <Text style={styles.toggleLink}>Log in</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
 
+        {/* error message */}
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        </ScrollView>
+        {/* submit button */}
+        <TouchableOpacity
+          style={[styles.loginButton, loading && styles.loginButtonDisabled]}
+          onPress={isLogin ? handleLogin : handleSignup}
+          disabled={loading}
+        >
+          <Text style={styles.loginButtonText}>
+            {loading
+              ? isLogin ? 'Logging in...' : 'Creating account...'
+              : isLogin ? 'Login' : 'Create account'}
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
     </KeyboardAvoidingView>
-    );
+  );
 }
 
 const styles = StyleSheet.create({
@@ -138,6 +195,26 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     marginTop: 4,
   },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  toggleText: {
+    color: '#888',
+    fontSize: 13,
+  },
+  toggleLink: {
+    color: '#9B30D9',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  errorText: {
+    color: '#c0392b',
+    fontSize: 13,
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+  },
   loginButton: {
     width: '100%',
     backgroundColor: '#9B30D9',
@@ -147,31 +224,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     marginTop: 24,
   },
-  loginButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  errorText: {
-    color: '#c0392b',
-    fontSize: 13,
-    marginBottom: 8,
-    alignSelf: 'flex-start',
-  },
   loginButtonDisabled: {
     opacity: 0.6,
   },
-  signupRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  signupText: {
-    color: '#888',
-    fontSize: 13,
-  },
-  signupLink: {
-    color: '#9B30D9',
-    fontSize: 13,
+  loginButtonText: {
+    color: '#fff',
+    fontSize: 16,
     fontWeight: '600',
   },
 });

@@ -1,12 +1,6 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
-
-const FAKE_CATS = [
-  { id: '1', name: 'Taco', status: 'spotted', location: 'Street Juárez', lastSeen: '2h ago' },
-  { id: '2', name: 'Luna', status: 'neutered', location: 'Plaza Central', lastSeen: '1d ago' },
-  { id: '3', name: 'Gordo', status: 'returned', location: 'Barrio Antiguo', lastSeen: '3d ago' },
-  { id: '4', name: 'Sombra', status: 'trapped', location: 'Calle Morelos', lastSeen: '5h ago' },
-];
+import { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
+import { supabase } from '../lib/supabase';
 
 const FILTERS = ['All', 'Spotted', 'Trapped', 'Neutered', 'Returned'];
 
@@ -20,10 +14,31 @@ const STATUS_COLORS = {
 export default function CatsScreen({ navigation }) {
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
+  const [cats, setCats] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = FAKE_CATS
+  useEffect(() => {
+    const fetchCats = async () => {
+      const { data, error } = await supabase.rpc('get_cats_with_locations');
+      if (!error && data) {
+        setCats(data);
+      }
+      setLoading(false);
+    };
+    fetchCats();
+  }, []);
+
+  const filtered = cats
     .filter(c => activeFilter === 'All' || c.status === activeFilter.toLowerCase())
     .filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator color="#B85CE8" size="large" />
+      </View>
+    );
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -75,7 +90,7 @@ export default function CatsScreen({ navigation }) {
                   <Text style={styles.badgeText}>{cat.status}</Text>
                 </View>
               </View>
-              <Text style={styles.catMeta}>📍 {cat.location} · {cat.lastSeen}</Text>
+              <Text style={styles.catMeta}>📍 {cat.latitude?.toFixed(4)}, {cat.longitude?.toFixed(4)}</Text>
             </View>
           </TouchableOpacity>
         ))
@@ -187,5 +202,11 @@ const styles = StyleSheet.create({
     color: '#aaa',
     marginTop: 40,
     fontSize: 15,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
   },
 });

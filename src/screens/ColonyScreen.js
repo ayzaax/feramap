@@ -25,7 +25,7 @@ function ProgressBar({ value, total }) {
   );
 }
 
-export default function ColonyScreen() {
+export default function ColonyScreen({ navigation }) {
   const c = FAKE_COLONY;
 
   return (
@@ -44,6 +44,13 @@ export default function ColonyScreen() {
       <View style={styles.statCard}>
         <Text style={styles.statCardText}>{c.reporters} reporters</Text>
       </View>
+
+      <TouchableOpacity
+        style={styles.trapQueueButton}
+        onPress={() => navigation.navigate('TrapQueue')}
+      >
+        <Text style={styles.trapQueueButtonText}>🪤  Trap Queue</Text>
+      </TouchableOpacity>
 
       {/* overall progress */}
       <Text style={styles.sectionLabel}>Overall progress</Text>
@@ -162,5 +169,18 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
+  },
+  trapQueueButton: {
+    backgroundColor: '#FFD9E2',
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 4,
+    marginBottom: 10,
+    alignItems: 'center',
+  },
+  trapQueueButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#9B30D9',
   },
 });

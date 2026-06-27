@@ -6,6 +6,7 @@ import TabNavigator from './src/navigation/TabNavigator';
 import ReportNavigator from './src/navigation/ReportNavigator';
 import LoginScreen from './src/screens/LoginScreen';
 import CatProfileScreen from './src/screens/CatProfileScreen';
+import TrapQueueScreen from './src/screens/TrapQueueScreen';
 
 const RootStack = createNativeStackNavigator();
 
@@ -33,6 +34,7 @@ export default function App() {
             options={{ presentation: 'modal' }}
           />
           <RootStack.Screen name="CatProfile" component={CatProfileScreen} />
+          <RootStack.Screen name="TrapQueue" component={TrapQueueScreen} />
         </RootStack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

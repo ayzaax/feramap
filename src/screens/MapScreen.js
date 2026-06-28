@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   TextInput,
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
+import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 
 const STATUS_COLORS = {
@@ -24,21 +25,23 @@ export default function MapScreen({ navigation }) {
   const [cats, setCats] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchCats = async () => {
-      const { data, error } = await supabase
-        .rpc('get_cats_with_locations');
+  const fetchCats = async () => {
+    const { data, error } = await supabase
+      .rpc('get_cats_with_locations');
 
-      console.log('cats:', JSON.stringify(data, null, 2));
+    console.log('cats:', JSON.stringify(data, null, 2));
 
-      if (!error && data) {
-        setCats(data);
-      }
-      setLoading(false);
-    };
+    if (!error && data) {
+      setCats(data);
+    }
+    setLoading(false);
+  };
 
-    fetchCats();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchCats();
+    }, [])
+  );
 
   return (
     <View style={styles.container}>

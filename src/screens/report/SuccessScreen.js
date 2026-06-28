@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 
 export default function SuccessScreen({ navigation, route }) {
-  const { name, condition, photoUri } = route.params ?? {};
+  const { name, condition, photoUri, catId } = route.params ?? {};
   const catName = name?.trim() || 'Unknown cat';
   const isUrgent = condition === 'injured' || condition === 'sick';
 
@@ -51,7 +51,7 @@ export default function SuccessScreen({ navigation, route }) {
       {/* buttons */}
       <TouchableOpacity
         style={styles.primaryButton}
-        onPress={() => navigation.getParent()?.navigate('CatProfile')}
+        onPress={() => navigation.getParent()?.navigate('CatProfile', { catId })}
       >
         <Text style={styles.primaryButtonText}>View full profile</Text>
       </TouchableOpacity>

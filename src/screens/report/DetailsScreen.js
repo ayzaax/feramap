@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView } from 'react-native';
+import { supabase } from '../../lib/supabase';
 
 const CONDITIONS = [
   { id: 'healthy', label: 'Healthy', color: '#4CAF50' },
@@ -12,7 +13,59 @@ export default function DetailsScreen({ navigation, route }) {
   const [name, setName] = useState('');
   const [notes, setNotes] = useState('');
   const [condition, setCondition] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
   const { photoUri } = route.params ?? {};
+  const location = route.params?.location ?? { latitude: 25.5428, longitude: -103.4068 };
+
+  const handleSubmit = async () => {
+    if (!condition) return;
+    setLoading(true);
+    setError('');
+
+    const { data: newCat, error: catError } = await supabase
+      .from('cats')
+      .insert({
+        name: name.trim() || null,
+        status: 'spotted',
+        priority: condition === 'injured' || condition === 'sick' ? 'Urgent' : 'Medium',
+        colony_id: '00000000-0000-0000-0000-000000000001',
+      })
+      .select()
+      .single();
+
+    if (catError) {
+      setError(catError.message);
+      setLoading(false);
+      return;
+    }
+
+    const { error: sightingError } = await supabase
+      .from('sightings')
+      .insert({
+        cat_id: newCat.id,
+        location: `POINT(${location.longitude} ${location.latitude})`,
+        notes: notes.trim() || null,
+        condition: condition,
+        status: 'spotted',
+      });
+
+    if (sightingError) {
+      setError(sightingError.message);
+      setLoading(false);
+      return;
+    }
+
+    navigation.navigate('Success', {
+      name: name || 'Unknown cat',
+      condition,
+      photoUri,
+      catId: newCat.id,
+    });
+  };
+
+  const isUrgent = condition === 'injured' || condition === 'sick';
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -62,14 +115,15 @@ export default function DetailsScreen({ navigation, route }) {
         ))}
       </View>
 
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
       <TouchableOpacity
-        style={[styles.button, !condition && styles.buttonDisabled]}
-        onPress={() => condition && navigation.navigate('Success', { name, notes, condition, photoUri })}
+        style={[styles.button, (!condition || loading) && styles.buttonDisabled]}
+        onPress={handleSubmit}
+        disabled={!condition || loading}
       >
         <Text style={styles.buttonText}>
-          {condition === 'injured' || condition === 'sick'
-            ? 'Report urgently'
-            : 'Report cat'}
+          {loading ? 'Saving...' : isUrgent ? 'Report urgently' : 'Report cat'}
         </Text>
       </TouchableOpacity>
     </ScrollView>
@@ -139,6 +193,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#fff',
+  },
+  errorText: {
+    color: '#c0392b',
+    fontSize: 13,
+    marginBottom: 12,
   },
   button: {
     backgroundColor: '#9B30D9',

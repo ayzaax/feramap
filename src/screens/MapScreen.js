@@ -64,6 +64,7 @@ export default function MapScreen({ navigation }) {
               longitude: cat.longitude,
             }}
             title={cat.name}
+            onPress={() => navigation.navigate('CatProfile', { catId: cat.id })}
           >
             <View style={[
               styles.catMarker,
@@ -109,7 +110,7 @@ export default function MapScreen({ navigation }) {
         <Text style={styles.nearbyLabel}>Cats nearby</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {!loading && cats.map((cat) => (
-            <TouchableOpacity key={cat.id} style={styles.catChip}>
+            <TouchableOpacity key={cat.id} style={styles.catChip} onPress={() => navigation.navigate('CatProfile', { catId: cat.id })}>
               <View
                 style={[
                   styles.catDot,

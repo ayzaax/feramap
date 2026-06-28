@@ -1,27 +1,79 @@
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { supabase } from '../lib/supabase';
 
-const FAKE_CAT = {
-  name: 'Taco',
-  location: 'Street Juárez',
-  since: 'Jan 5, 2025',
-  sightings: 8,
-  contributors: 3,
-  lastSeen: '3d',
-  photos: [
-    'https://placecats.com/150/160',
-    'https://placecats.com/neo/150/160',
-    'https://placecats.com/millie/150/160',
-  ],
-  summary: 'Taco is an orange tabby spotted near the taqueria on Calle Juárez. Friendly with people, usually appears in the evenings. Needs neutering.',
-  sightings_history: [
-    { id: '1', title: 'Spotted near taqueria', quote: 'Looks healthy, came up to me!', time: '2 days ago', by: 'Carlos', color: '#EF9F27' },
-    { id: '2', title: 'Spotted on Calle Juárez', quote: 'Orange tabby, no ear notch', time: '1 week ago', by: 'Sofía', color: '#EF9F27' },
-    { id: '3', title: 'First spotted', quote: 'Found him near the corner', time: 'Jan 5', by: 'María', color: '#9B30D9' },
-  ],
+const PLACEHOLDER_PHOTOS = [
+  'https://placecats.com/150/160',
+  'https://placecats.com/neo/150/160',
+  'https://placecats.com/millie/150/160',
+];
+
+const STATUS_COLORS = {
+  spotted: '#EF9F27',
+  trapped: '#E8725A',
+  neutered: '#7F77DD',
+  returned: '#1D9E75',
 };
 
-export default function CatProfileScreen({ navigation }) {
-  const cat = FAKE_CAT;
+function formatDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+export default function CatProfileScreen({ navigation, route }) {
+  const [cat, setCat] = useState(null);
+  const [sightings, setSightings] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      let catId = route?.params?.catId;
+
+      if (!catId) {
+        const { data: first } = await supabase
+          .rpc('get_cats_with_locations')
+          .limit(1)
+          .single();
+        catId = first?.id;
+      }
+
+      if (!catId) {
+        setLoading(false);
+        return;
+      }
+
+      const [{ data: profileData, error: profileError }, { data: sightingData }] = await Promise.all([
+        supabase.rpc('get_cat_profile', { cat_id: catId }),
+        supabase.rpc('get_cat_sightings', { cat_id: catId }),
+      ]);
+
+      console.log('catId from params:', route.params?.catId);
+      console.log('profile data:', JSON.stringify(profileData, null, 2));
+      console.log('profile error:', profileError);
+
+      if (profileData?.[0]) setCat(profileData[0]);
+      if (sightingData) setSightings(sightingData);
+      setLoading(false);
+    };
+
+    fetchProfile();
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator color="#B85CE8" size="large" />
+      </View>
+    );
+  }
+
+  if (!cat) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={{ color: '#888' }}>Cat not found.</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -34,34 +86,34 @@ export default function CatProfileScreen({ navigation }) {
       {/* polaroid stack */}
       <View style={styles.photoStack}>
         <View style={[styles.polaroid, { transform: [{ rotate: '-6deg' }], top: 12, left: 8 }]}>
-          <Image source={{ uri: cat.photos[0] }} style={styles.photo} />
+          <Image source={{ uri: PLACEHOLDER_PHOTOS[0] }} style={styles.photo} />
         </View>
         <View style={[styles.polaroid, { transform: [{ rotate: '4deg' }], top: 6, left: 4 }]}>
-          <Image source={{ uri: cat.photos[1] }} style={styles.photo} />
+          <Image source={{ uri: PLACEHOLDER_PHOTOS[1] }} style={styles.photo} />
         </View>
         <View style={[styles.polaroid, { transform: [{ rotate: '-1deg' }], top: 0, left: 0 }]}>
-          <Image source={{ uri: cat.photos[2] }} style={styles.photo} />
+          <Image source={{ uri: PLACEHOLDER_PHOTOS[2] }} style={styles.photo} />
         </View>
       </View>
 
       {/* name + location */}
       <Text style={styles.name}>{cat.name}</Text>
-      <Text style={styles.location}>📍 {cat.location} · since {cat.since}</Text>
+      <Text style={styles.location}>📍 {cat.zone_name ?? '—'} · since {formatDate(cat.created_at)}</Text>
 
       {/* stats row */}
       <View style={styles.statsRow}>
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{cat.sightings}</Text>
+          <Text style={styles.statNumber}>{cat.sighting_count ?? 0}</Text>
           <Text style={styles.statLabel}>Sightings</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{cat.contributors}</Text>
+          <Text style={styles.statNumber}>1</Text>
           <Text style={styles.statLabel}>Contributors</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{cat.lastSeen}</Text>
+          <Text style={styles.statNumber}>{cat.last_seen ?? '—'}</Text>
           <Text style={styles.statLabel}>Last seen</Text>
         </View>
       </View>
@@ -69,25 +121,29 @@ export default function CatProfileScreen({ navigation }) {
       {/* community summary */}
       <View style={styles.summaryBox}>
         <Text style={styles.summaryTitle}>✦  Community summary</Text>
-        <Text style={styles.summaryText}>{cat.summary}</Text>
+        <Text style={styles.summaryText}>{cat.summary ?? 'No summary yet.'}</Text>
       </View>
 
       {/* sighting history */}
       <Text style={styles.historyLabel}>Sighting history</Text>
       <View style={styles.timeline}>
-        {cat.sightings_history.map((s, i) => (
-          <View key={s.id} style={styles.timelineRow}>
-            <View style={styles.timelineLeft}>
-              <View style={[styles.dot, { backgroundColor: s.color }]} />
-              {i < cat.sightings_history.length - 1 && <View style={styles.line} />}
+        {sightings.length === 0 ? (
+          <Text style={styles.empty}>No sightings recorded yet.</Text>
+        ) : (
+          sightings.map((s, i) => (
+            <View key={s.id ?? i} style={styles.timelineRow}>
+              <View style={styles.timelineLeft}>
+                <View style={[styles.dot, { backgroundColor: STATUS_COLORS[s.condition] ?? '#9B30D9' }]} />
+                {i < sightings.length - 1 && <View style={styles.line} />}
+              </View>
+              <View style={styles.timelineContent}>
+                <Text style={styles.sightingTitle}>{s.condition ?? 'Sighting'}</Text>
+                {s.notes ? <Text style={styles.sightingQuote}>"{s.notes}"</Text> : null}
+                <Text style={styles.sightingMeta}>{formatDate(s.created_at)}</Text>
+              </View>
             </View>
-            <View style={styles.timelineContent}>
-              <Text style={styles.sightingTitle}>{s.title}</Text>
-              <Text style={styles.sightingQuote}>"{s.quote}"</Text>
-              <Text style={styles.sightingMeta}>{s.time} · by {s.by}</Text>
-            </View>
-          </View>
-        ))}
+          ))
+        )}
       </View>
 
       {/* bottom buttons */}
@@ -115,6 +171,12 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingHorizontal: 24,
     paddingBottom: 40,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
   },
   photoStack: {
     width: 180,
@@ -272,5 +334,9 @@ const styles = StyleSheet.create({
     fontSize: 28,
     color: '#9B30D9',
     fontWeight: '600',
+  },
+  empty: {
+    color: '#aaa',
+    fontSize: 14,
   },
 });

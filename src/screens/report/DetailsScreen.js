@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView } from 'react-native';
+import * as FileSystem from 'expo-file-system/legacy';
+import { decode } from 'base64-arraybuffer';
 import { supabase } from '../../lib/supabase';
 
 const CONDITIONS = [
@@ -57,10 +59,41 @@ export default function DetailsScreen({ navigation, route }) {
       return;
     }
 
+    let finalPhotoUri = photoUri;
+    if (photoUri) {
+      try {
+        const base64 = await FileSystem.readAsStringAsync(photoUri, {
+          encoding: 'base64',
+        });
+        const arrayBuffer = decode(base64);
+        const fileName = `${newCat.id}/${Date.now()}.jpg`;
+        const { error: uploadError } = await supabase.storage
+          .from('cat-photos')
+          .upload(fileName, arrayBuffer, { contentType: 'image/jpeg', upsert: true });
+
+        if (uploadError) {
+          console.log('Photo upload error:', uploadError.message);
+        } else {
+          const { data: { publicUrl } } = supabase.storage
+            .from('cat-photos')
+            .getPublicUrl(fileName);
+          await supabase.from('cat_photos').insert({
+            cat_id: newCat.id,
+            photo_url: publicUrl,
+          });
+          finalPhotoUri = publicUrl;
+        }
+      } catch (uploadErr) {
+        console.log('Photo upload error:', JSON.stringify(uploadErr, null, 2));
+        console.log('Photo upload error message:', uploadErr?.message);
+        console.log('photoUri was:', photoUri);
+      }
+    }
+
     navigation.navigate('Success', {
       name: name || 'Unknown cat',
       condition,
-      photoUri,
+      photoUri: finalPhotoUri,
       catId: newCat.id,
     });
   };

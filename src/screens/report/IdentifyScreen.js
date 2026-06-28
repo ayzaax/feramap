@@ -1,21 +1,63 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-
-const NEARBY_CATS = [
-  { id: '1', name: 'Taco', detail: '12m away · Spotted' },
-  { id: '2', name: 'Luna', detail: '38m away · Neutered' },
-  { id: 'new', name: 'This is a new cat!', detail: 'Never been spotted' },
-];
+import { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import { supabase } from '../../lib/supabase';
 
 export default function IdentifyScreen({ navigation }) {
+  const [cats, setCats] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState('new');
+
+  useEffect(() => {
+    const fetchNearbyCats = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('cats')
+          .select(`
+            id,
+            name,
+            status,
+            cat_photos (
+              photo_url
+            )
+          `)
+          .limit(2);
+
+        if (error) throw error;
+        setCats(data || []);
+      } catch (err) {
+        console.error('Error fetching nearby cats:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNearbyCats();
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#B85CE8" />
+      </View>
+    );
+  }
+
+  const listData = [
+    ...cats.map(c => ({
+      id: c.id,
+      name: c.name || 'Unknown cat',
+      detail: `Spotted nearby · ${c.status}`,
+      photo_url: c.cat_photos?.[0]?.photo_url || null,
+    })),
+    { id: 'new', name: 'This is a new cat!', detail: 'Never been spotted', photo_url: null },
+  ];
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Seen this cat before?</Text>
-      <Text style={styles.subtitle}>2 cats known nearby.{'\n'}Is this one of them?</Text>
+      <Text style={styles.subtitle}>{cats.length} cat{cats.length !== 1 ? 's' : ''} known nearby.{'\n'}Is this one of them?</Text>
 
-      {NEARBY_CATS.map((cat) => (
+      {listData.map((cat) => (
         <TouchableOpacity
           key={cat.id}
           style={styles.row}
@@ -23,7 +65,11 @@ export default function IdentifyScreen({ navigation }) {
         >
           {cat.id !== 'new' && (
             <View style={styles.catAvatar}>
-              <Text style={styles.catEmoji}>🐱</Text>
+              {cat.photo_url ? (
+                <Image source={{ uri: cat.photo_url }} style={styles.avatarImage} />
+              ) : (
+                <Text style={styles.catEmoji}>🐱</Text>
+              )}
             </View>
           )}
           <View style={styles.catInfo}>
@@ -38,7 +84,7 @@ export default function IdentifyScreen({ navigation }) {
 
       <TouchableOpacity
         style={styles.button}
-        onPress={() => navigation.navigate('Camera', { selectedCatId: selected, isNewCat: selected === 'new' })}
+        onPress={() => navigation.navigate('Camera')}
       >
         <Text style={styles.buttonText}>Continue  →</Text>
       </TouchableOpacity>
@@ -87,6 +133,12 @@ const styles = StyleSheet.create({
   catEmoji: {
     fontSize: 24,
   },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 22,
+    resizeMode: 'cover',
+  },
   catInfo: {
     flex: 1,
   },
@@ -126,5 +178,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: '700',
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
   },
 });

@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIndicator, Animated } from 'react-native';
 import { supabase } from '../lib/supabase';
 
-const PLACEHOLDER_PHOTOS = [
-  'https://placecats.com/150/160',
-  'https://placecats.com/neo/150/160',
-  'https://placecats.com/millie/150/160',
+const POLAROID_TRANSFORMS = [
+  { rotate: '-6deg', top: 12, left: 8 },
+  { rotate: '4deg',  top: 6,  left: 4 },
+  { rotate: '-1deg', top: 0,  left: 0 },
 ];
 
 const STATUS_COLORS = {
@@ -23,7 +23,12 @@ function formatDate(iso) {
 export default function CatProfileScreen({ navigation, route }) {
   const [cat, setCat] = useState(null);
   const [sightings, setSightings] = useState([]);
+  const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [animationPhase, setAnimationPhase] = useState(null); // 'up' | 'down' | null
+
+  const swipeAnim = useRef(new Animated.ValueXY()).current;
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -42,9 +47,10 @@ export default function CatProfileScreen({ navigation, route }) {
         return;
       }
 
-      const [{ data: profileData, error: profileError }, { data: sightingData }] = await Promise.all([
+      const [{ data: profileData, error: profileError }, { data: sightingData }, { data: photoData }] = await Promise.all([
         supabase.rpc('get_cat_profile', { cat_id: catId }),
         supabase.rpc('get_cat_sightings', { cat_id: catId }),
+        supabase.from('cat_photos').select('photo_url').eq('cat_id', catId).order('created_at', { ascending: false }),
       ]);
 
       console.log('catId from params:', route.params?.catId);
@@ -53,11 +59,44 @@ export default function CatProfileScreen({ navigation, route }) {
 
       if (profileData?.[0]) setCat(profileData[0]);
       if (sightingData) setSightings(sightingData);
+      if (photoData?.length > 0) setPhotos(photoData.map(p => p.photo_url));
       setLoading(false);
     };
 
     fetchProfile();
   }, []);
+
+  const handlePressPhoto = () => {
+    if (photos.length <= 1 || isAnimating) return;
+
+    setIsAnimating(true);
+    setAnimationPhase('up');
+
+    // Phase 1: Slide the top card up and out
+    Animated.timing(swipeAnim, {
+      toValue: { x: 15, y: -230 },
+      duration: 250,
+      useNativeDriver: true,
+    }).start(() => {
+      // Phase 2: Set phase to 'down' and cycle the array so the top card goes to the bottom
+      setAnimationPhase('down');
+      setPhotos(prev => {
+        const last = prev[prev.length - 1];
+        const rest = prev.slice(0, prev.length - 1);
+        return [last, ...rest];
+      });
+
+      // Slide the card (now at the bottom) back down into the stack
+      Animated.timing(swipeAnim, {
+        toValue: { x: 0, y: 0 },
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => {
+        setAnimationPhase(null);
+        setIsAnimating(false);
+      });
+    });
+  };
 
   if (loading) {
     return (
@@ -75,6 +114,13 @@ export default function CatProfileScreen({ navigation, route }) {
     );
   }
 
+  // Interpolate Y position to add dynamic rotation during the swipe
+  const rotateSwipe = swipeAnim.y.interpolate({
+    inputRange: [-230, 0],
+    outputRange: ['-12deg', '0deg'],
+    extrapolate: 'clamp',
+  });
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
 
@@ -84,17 +130,53 @@ export default function CatProfileScreen({ navigation, route }) {
       </TouchableOpacity>
 
       {/* polaroid stack */}
-      <View style={styles.photoStack}>
-        <View style={[styles.polaroid, { transform: [{ rotate: '-6deg' }], top: 12, left: 8 }]}>
-          <Image source={{ uri: PLACEHOLDER_PHOTOS[0] }} style={styles.photo} />
-        </View>
-        <View style={[styles.polaroid, { transform: [{ rotate: '4deg' }], top: 6, left: 4 }]}>
-          <Image source={{ uri: PLACEHOLDER_PHOTOS[1] }} style={styles.photo} />
-        </View>
-        <View style={[styles.polaroid, { transform: [{ rotate: '-1deg' }], top: 0, left: 0 }]}>
-          <Image source={{ uri: PLACEHOLDER_PHOTOS[2] }} style={styles.photo} />
-        </View>
-      </View>
+      <TouchableOpacity style={styles.photoStack} onPress={handlePressPhoto} activeOpacity={0.95}>
+        {photos.length === 0 ? (
+          <View style={[styles.polaroid, { top: 0, left: 0 }]}>
+            <View style={styles.photoPlaceholder}>
+              <Text style={styles.photoPlaceholderEmoji}>🐱</Text>
+            </View>
+          </View>
+        ) : (
+          photos.slice(0, 3).map((uri, i) => {
+            const isTopCard = i === Math.min(photos.length, 3) - 1;
+            const isBottomCard = i === 0;
+            const transform = [
+              { rotate: POLAROID_TRANSFORMS[i].rotate },
+            ];
+
+            // Apply translation and rotation based on the active animation phase
+            if (animationPhase === 'up' && isTopCard) {
+              transform.push(...swipeAnim.getTranslateTransform());
+              transform.push({ rotate: rotateSwipe });
+            } else if (animationPhase === 'down' && isBottomCard) {
+              transform.push(...swipeAnim.getTranslateTransform());
+              transform.push({ rotate: rotateSwipe });
+            }
+
+            return (
+              <Animated.View
+                key={uri}
+                style={[
+                  styles.polaroid,
+                  {
+                    transform,
+                    top: POLAROID_TRANSFORMS[i].top,
+                    left: POLAROID_TRANSFORMS[i].left,
+                    zIndex: i,
+                  },
+                ]}
+              >
+                <Image source={{ uri }} style={styles.photo} />
+              </Animated.View>
+            );
+          })
+        )}
+      </TouchableOpacity>
+
+      {photos.length > 1 && (
+        <Text style={styles.tapHint}>📸 Tap stack to cycle photos</Text>
+      )}
 
       {/* name + location */}
       <Text style={styles.name}>{cat.name}</Text>
@@ -197,6 +279,15 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     resizeMode: 'cover',
+  },
+  photoPlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFD9E2',
+  },
+  photoPlaceholderEmoji: {
+    fontSize: 48,
   },
   name: {
     fontSize: 32,
@@ -338,5 +429,12 @@ const styles = StyleSheet.create({
   empty: {
     color: '#aaa',
     fontSize: 14,
+  },
+  tapHint: {
+    fontSize: 12,
+    color: '#B85CE8',
+    marginTop: -8,
+    marginBottom: 16,
+    fontWeight: '600',
   },
 });

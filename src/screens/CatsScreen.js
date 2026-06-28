@@ -1,12 +1,6 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
-
-const FAKE_CATS = [
-  { id: '1', name: 'Taco', status: 'spotted', location: 'Street Juárez', lastSeen: '2h ago' },
-  { id: '2', name: 'Luna', status: 'neutered', location: 'Plaza Central', lastSeen: '1d ago' },
-  { id: '3', name: 'Gordo', status: 'returned', location: 'Barrio Antiguo', lastSeen: '3d ago' },
-  { id: '4', name: 'Sombra', status: 'trapped', location: 'Calle Morelos', lastSeen: '5h ago' },
-];
+import { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, ActivityIndicator } from 'react-native';
+import { supabase } from '../lib/supabase';
 
 const FILTERS = ['All', 'Spotted', 'Trapped', 'Neutered', 'Returned'];
 
@@ -17,13 +11,69 @@ const STATUS_COLORS = {
   returned: '#1D9E75',
 };
 
+function formatLastSeen(iso) {
+  if (!iso) return 'unknown';
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const diffMins = Math.max(0, Math.floor(diffMs / 60000));
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return `${diffDays}d ago`;
+}
+
 export default function CatsScreen({ navigation }) {
+  const [cats, setCats] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
 
-  const filtered = FAKE_CATS
+  useEffect(() => {
+    const fetchCats = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('cats')
+          .select(`
+            id,
+            name,
+            status,
+            created_at,
+            zones (
+              name
+            ),
+            cat_photos (
+              photo_url
+            ),
+            sightings (
+              created_at
+            )
+          `)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        setCats(data || []);
+      } catch (err) {
+        console.error('Error fetching cats:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCats();
+  }, []);
+
+  const filtered = cats
     .filter(c => activeFilter === 'All' || c.status === activeFilter.toLowerCase())
-    .filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
+    .filter(c => (c.name || 'Unknown cat').toLowerCase().includes(search.toLowerCase()));
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#B85CE8" />
+      </View>
+    );
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -59,26 +109,36 @@ export default function CatsScreen({ navigation }) {
       {filtered.length === 0 ? (
         <Text style={styles.empty}>No cats found.</Text>
       ) : (
-        filtered.map(cat => (
-          <TouchableOpacity
-            key={cat.id}
-            style={styles.card}
-            onPress={() => navigation.navigate('CatProfile', { catId: cat.id })}
-          >
-            <View style={styles.avatar}>
-              <Text style={styles.avatarEmoji}>🐱</Text>
-            </View>
-            <View style={styles.cardInfo}>
-              <View style={styles.nameRow}>
-                <Text style={styles.catName}>{cat.name}</Text>
-                <View style={[styles.badge, { backgroundColor: STATUS_COLORS[cat.status] }]}>
-                  <Text style={styles.badgeText}>{cat.status}</Text>
-                </View>
+        filtered.map(cat => {
+          const photoUrl = cat.cat_photos?.[0]?.photo_url;
+          const latestSighting = cat.sightings?.[0]?.created_at;
+          return (
+            <TouchableOpacity
+              key={cat.id}
+              style={styles.card}
+              onPress={() => navigation.navigate('CatProfile', { catId: cat.id })}
+            >
+              <View style={styles.avatar}>
+                {photoUrl ? (
+                  <Image source={{ uri: photoUrl }} style={styles.avatarImage} />
+                ) : (
+                  <Text style={styles.avatarEmoji}>🐱</Text>
+                )}
               </View>
-              <Text style={styles.catMeta}>📍 {cat.location} · {cat.lastSeen}</Text>
-            </View>
-          </TouchableOpacity>
-        ))
+              <View style={styles.cardInfo}>
+                <View style={styles.nameRow}>
+                  <Text style={styles.catName}>{cat.name || 'Unknown cat'}</Text>
+                  <View style={[styles.badge, { backgroundColor: STATUS_COLORS[cat.status] || '#9B30D9' }]}>
+                    <Text style={styles.badgeText}>{cat.status}</Text>
+                  </View>
+                </View>
+                <Text style={styles.catMeta}>
+                  📍 {cat.zones?.name ?? 'Colonia Centro'} · {formatLastSeen(latestSighting)}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })
       )}
     </ScrollView>
   );
@@ -154,6 +214,12 @@ const styles = StyleSheet.create({
   avatarEmoji: {
     fontSize: 26,
   },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 12,
+    resizeMode: 'cover',
+  },
   cardInfo: {
     flex: 1,
   },
@@ -187,5 +253,11 @@ const styles = StyleSheet.create({
     color: '#aaa',
     marginTop: 40,
     fontSize: 15,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
   },
 });

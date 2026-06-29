@@ -18,7 +18,7 @@ export default function DetailsScreen({ navigation, route }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const { photoUri } = route.params ?? {};
+  const { photoUri, catId, catName } = route.params ?? {};
   const location = route.params?.location ?? { latitude: 25.5428, longitude: -103.4068 };
 
   const handleSubmit = async () => {
@@ -26,27 +26,42 @@ export default function DetailsScreen({ navigation, route }) {
     setLoading(true);
     setError('');
 
-    const { data: newCat, error: catError } = await supabase
-      .from('cats')
-      .insert({
-        name: name.trim() || null,
-        status: 'spotted',
-        priority: condition === 'injured' || condition === 'sick' ? 'Urgent' : 'Medium',
-        colony_id: '00000000-0000-0000-0000-000000000001',
-      })
-      .select()
-      .single();
+    let activeCatId = catId;
 
-    if (catError) {
-      setError(catError.message);
-      setLoading(false);
-      return;
+    if (!activeCatId) {
+      // Create a new cat
+      const { data: newCat, error: catError } = await supabase
+        .from('cats')
+        .insert({
+          name: name.trim() || null,
+          status: 'spotted',
+          priority: condition === 'injured' || condition === 'sick' ? 'Urgent' : 'Medium',
+          colony_id: '00000000-0000-0000-0000-000000000001',
+        })
+        .select()
+        .single();
+
+      if (catError) {
+        setError(catError.message);
+        setLoading(false);
+        return;
+      }
+      activeCatId = newCat.id;
+    } else {
+      // Update existing cat's priority to Urgent if reported as sick or injured
+      if (condition === 'injured' || condition === 'sick') {
+        await supabase
+          .from('cats')
+          .update({ priority: 'Urgent' })
+          .eq('id', activeCatId);
+      }
     }
 
+    // Insert sighting for the cat
     const { error: sightingError } = await supabase
       .from('sightings')
       .insert({
-        cat_id: newCat.id,
+        cat_id: activeCatId,
         location: `POINT(${location.longitude} ${location.latitude})`,
         notes: notes.trim() || null,
         condition: condition,
@@ -66,7 +81,7 @@ export default function DetailsScreen({ navigation, route }) {
           encoding: 'base64',
         });
         const arrayBuffer = decode(base64);
-        const fileName = `${newCat.id}/${Date.now()}.jpg`;
+        const fileName = `${activeCatId}/${Date.now()}.jpg`;
         const { error: uploadError } = await supabase.storage
           .from('cat-photos')
           .upload(fileName, arrayBuffer, { contentType: 'image/jpeg', upsert: true });
@@ -78,7 +93,7 @@ export default function DetailsScreen({ navigation, route }) {
             .from('cat-photos')
             .getPublicUrl(fileName);
           await supabase.from('cat_photos').insert({
-            cat_id: newCat.id,
+            cat_id: activeCatId,
             photo_url: publicUrl,
           });
           finalPhotoUri = publicUrl;
@@ -91,10 +106,10 @@ export default function DetailsScreen({ navigation, route }) {
     }
 
     navigation.navigate('Success', {
-      name: name || 'Unknown cat',
+      name: catName || name || 'Unknown cat',
       condition,
       photoUri: finalPhotoUri,
-      catId: newCat.id,
+      catId: activeCatId,
     });
   };
 

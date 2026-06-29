@@ -27,6 +27,7 @@ export default function CatProfileScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [isAnimating, setIsAnimating] = useState(false);
   const [animationPhase, setAnimationPhase] = useState(null); // 'up' | 'down' | null
+  const [isFollowing, setIsFollowing] = useState(false);
 
   const swipeAnim = useRef(new Animated.ValueXY()).current;
 
@@ -47,10 +48,16 @@ export default function CatProfileScreen({ navigation, route }) {
         return;
       }
 
-      const [{ data: profileData, error: profileError }, { data: sightingData }, { data: photoData }] = await Promise.all([
+      const [
+        { data: profileData, error: profileError },
+        { data: sightingData },
+        { data: photoData },
+        { data: followData }
+      ] = await Promise.all([
         supabase.rpc('get_cat_profile', { cat_id: catId }),
         supabase.rpc('get_cat_sightings', { cat_id: catId }),
         supabase.from('cat_photos').select('photo_url').eq('cat_id', catId).order('created_at', { ascending: false }),
+        supabase.from('user_follows').select('*').eq('cat_id', catId).maybeSingle()
       ]);
 
       console.log('catId from params:', route.params?.catId);
@@ -60,6 +67,7 @@ export default function CatProfileScreen({ navigation, route }) {
       if (profileData?.[0]) setCat(profileData[0]);
       if (sightingData) setSightings(sightingData);
       if (photoData?.length > 0) setPhotos(photoData.map(p => p.photo_url));
+      if (followData) setIsFollowing(true);
       setLoading(false);
     };
 
@@ -96,6 +104,39 @@ export default function CatProfileScreen({ navigation, route }) {
         setIsAnimating(false);
       });
     });
+  };
+
+  const handleToggleFollow = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert('Please log in to follow cats.');
+        return;
+      }
+
+      if (isFollowing) {
+        const { error } = await supabase
+          .from('user_follows')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('cat_id', cat.id);
+
+        if (error) throw error;
+        setIsFollowing(false);
+      } else {
+        const { error } = await supabase
+          .from('user_follows')
+          .insert({
+            user_id: user.id,
+            cat_id: cat.id,
+          });
+
+        if (error) throw error;
+        setIsFollowing(true);
+      }
+    } catch (err) {
+      console.error('Error toggling follow:', err);
+    }
   };
 
   if (loading) {
@@ -230,14 +271,37 @@ export default function CatProfileScreen({ navigation, route }) {
 
       {/* bottom buttons */}
       <View style={styles.buttonsRow}>
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={() => navigation.navigate('Report', {
+            screen: 'Location',
+            params: { catId: cat.id, catName: cat.name }
+          })}
+        >
           <Text style={styles.actionButtonText}>Log{'\n'}Sighting</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={() => navigation.navigate('Main', {
+            screen: 'Map',
+            params: {
+              centerOnCat: {
+                id: cat.id,
+                latitude: cat.latitude,
+                longitude: cat.longitude,
+              }
+            }
+          })}
+        >
           <Text style={styles.actionButtonText}>See on{'\n'}map</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
-          <Text style={styles.actionButtonText}>Follow</Text>
+        <TouchableOpacity 
+          style={[styles.actionButton, isFollowing && styles.followingButton]}
+          onPress={handleToggleFollow}
+        >
+          <Text style={[styles.actionButtonText, isFollowing && styles.followingButtonText]}>
+            {isFollowing ? 'Following' : 'Follow'}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -436,5 +500,13 @@ const styles = StyleSheet.create({
     marginTop: -8,
     marginBottom: 16,
     fontWeight: '600',
+  },
+  followingButton: {
+    backgroundColor: '#FFD9E2',
+    borderWidth: 1,
+    borderColor: '#9B30D9',
+  },
+  followingButtonText: {
+    color: '#9B30D9',
   },
 });

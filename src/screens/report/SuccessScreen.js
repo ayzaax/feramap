@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 
 export default function SuccessScreen({ navigation, route }) {
-  const { name, condition, photoUri, catId } = route.params ?? {};
+  const { name, condition, photoUri, catId, isExistingCat } = route.params ?? {};
   const catName = name?.trim() || 'Unknown cat';
   const isUrgent = condition === 'injured' || condition === 'sick';
 
@@ -19,11 +19,15 @@ export default function SuccessScreen({ navigation, route }) {
         )}
       </View>
 
-      <Text style={styles.title}>{catName} is on the map!</Text>
+      <Text style={styles.title}>
+        {isExistingCat ? `Sighting logged for ${catName}!` : `${catName} is on the map!`}
+      </Text>
       <Text style={styles.thanks}>The neighbourhood thanks you</Text>
 
       {isUrgent ? (
         <Text style={styles.urgent}>⚠️ Marked as {condition} — volunteers notified</Text>
+      ) : isExistingCat ? (
+        <Text style={styles.founder}>Sighting successfully recorded!</Text>
       ) : (
         <Text style={styles.founder}>You're {catName}'s first spotter!</Text>
       )}
@@ -36,15 +40,19 @@ export default function SuccessScreen({ navigation, route }) {
       {/* timeline */}
       <View style={styles.timeline}>
         <View style={styles.timelineRow}>
-          <View style={[styles.dot, { backgroundColor: '#FF9800' }]} />
+          <View style={[styles.dot, { backgroundColor: '#9B30D9' }]} />
           <View>
-            <Text style={styles.timelineBold}>First spotted — just now</Text>
+            <Text style={styles.timelineBold}>
+              {isExistingCat ? 'New sighting added' : 'First spotted — just now'}
+            </Text>
             <Text style={styles.timelineSub}>Just now · by you</Text>
           </View>
         </View>
         <View style={styles.timelineRow}>
           <View style={[styles.dot, { backgroundColor: '#bbb' }]} />
-          <Text style={styles.timelineSub}>Waiting for more sightings...</Text>
+          <Text style={styles.timelineSub}>
+            {isExistingCat ? 'Thank you for keeping the community updated!' : 'Waiting for more sightings...'}
+          </Text>
         </View>
       </View>
 

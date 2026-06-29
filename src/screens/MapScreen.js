@@ -9,8 +9,9 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, Callout } from 'react-native-maps';
 import { useFocusEffect } from '@react-navigation/native';
+import * as Location from 'expo-location';
 import { supabase } from '../lib/supabase';
 
 const STATUS_COLORS = {
@@ -87,6 +88,13 @@ export default function MapScreen({ navigation, route }) {
       navigation.setParams({ centerOnCat: undefined });
     }
   }, [route.params?.centerOnCat]);
+
+  useEffect(() => {
+    (async () => {
+      // Request permission on startup so the blue user location dot appears immediately
+      await Location.requestForegroundPermissionsAsync();
+    })();
+  }, []);
 
   const filteredCats = cats.filter(cat => 
     activeFilter === 'All' || cat.status.toLowerCase() === activeFilter.toLowerCase()

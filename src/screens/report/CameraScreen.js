@@ -1,7 +1,9 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 
-export default function CameraScreen({ navigation }) {
+export default function CameraScreen({ navigation, route }) {
+  const { catId, catName, location } = route.params ?? {};
+
   const takePhoto = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) return;
@@ -12,7 +14,12 @@ export default function CameraScreen({ navigation }) {
     });
 
     if (!result.canceled) {
-      navigation.navigate('Details', { photoUri: result.assets[0].uri });
+      navigation.navigate('Details', { 
+        photoUri: result.assets[0].uri,
+        catId,
+        catName,
+        location,
+      });
     }
   };
 
@@ -23,7 +30,12 @@ export default function CameraScreen({ navigation }) {
     });
 
     if (!result.canceled) {
-      navigation.navigate('Details', { photoUri: result.assets[0].uri });
+      navigation.navigate('Details', { 
+        photoUri: result.assets[0].uri,
+        catId,
+        catName,
+        location,
+      });
     }
   };
 

@@ -110,6 +110,7 @@ export default function DetailsScreen({ navigation, route }) {
       condition,
       photoUri: finalPhotoUri,
       catId: activeCatId,
+      isExistingCat: !!catId,
     });
   };
 
@@ -120,17 +121,26 @@ export default function DetailsScreen({ navigation, route }) {
       <Text style={styles.title}>Tell us about them</Text>
       <Text style={styles.subtitle}>All fields optional except condition.</Text>
 
-      {/* name input */}
-      <View style={styles.inputBox}>
-        <Text style={styles.inputLabel}>Name</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Leave blank if unsure..."
-          placeholderTextColor="#aaa"
-          value={name}
-          onChangeText={setName}
-        />
-      </View>
+      {/* name input or existing cat banner */}
+      {catId ? (
+        <View style={styles.existingCatHeader}>
+          <Text style={styles.existingCatText}>
+            Reporting sighting for:{' '}
+            <Text style={styles.existingCatName}>{catName || 'Known Cat'}</Text>
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.inputBox}>
+          <Text style={styles.inputLabel}>Name</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Leave blank if unsure..."
+            placeholderTextColor="#aaa"
+            value={name}
+            onChangeText={setName}
+          />
+        </View>
+      )}
 
       {/* notes input */}
       <View style={styles.inputBox}>
@@ -260,5 +270,23 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: '700',
+  },
+  existingCatHeader: {
+    backgroundColor: '#FFD9E2',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#9B30D9',
+  },
+  existingCatText: {
+    fontSize: 15,
+    color: '#333',
+    fontWeight: '500',
+  },
+  existingCatName: {
+    color: '#9B30D9',
+    fontWeight: '700',
+    fontSize: 16,
   },
 });

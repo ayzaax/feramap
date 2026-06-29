@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -22,8 +22,9 @@ const STATUS_COLORS = {
 
 const FILTERS = ['All', 'Spotted', 'Trapped', 'Neutered', 'Returned'];
 
-export default function MapScreen({ navigation }) {
+export default function MapScreen({ navigation, route }) {
   const mapRef = useRef(null);
+  const markerRefs = useRef({});
   const [cats, setCats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('All');
@@ -64,6 +65,29 @@ export default function MapScreen({ navigation }) {
     }, [])
   );
 
+  useEffect(() => {
+    const centerOnCat = route.params?.centerOnCat;
+    if (centerOnCat && mapRef.current) {
+      const { id, latitude, longitude } = centerOnCat;
+      mapRef.current.animateToRegion({
+        latitude,
+        longitude,
+        latitudeDelta: 0.005,
+        longitudeDelta: 0.005,
+      }, 1000);
+
+      // Open the callout for this specific cat after the panning animation finishes
+      setTimeout(() => {
+        if (id && markerRefs.current[id]) {
+          markerRefs.current[id].showCallout();
+        }
+      }, 1100);
+
+      // Clear params to avoid re-centering on every tab switch
+      navigation.setParams({ centerOnCat: undefined });
+    }
+  }, [route.params?.centerOnCat]);
+
   const filteredCats = cats.filter(cat => 
     activeFilter === 'All' || cat.status.toLowerCase() === activeFilter.toLowerCase()
   );
@@ -94,6 +118,9 @@ export default function MapScreen({ navigation }) {
         {filteredCats.map((cat) => (
           <Marker
             key={cat.id}
+            ref={el => {
+              if (el) markerRefs.current[cat.id] = el;
+            }}
             coordinate={{
               latitude: cat.latitude,
               longitude: cat.longitude,

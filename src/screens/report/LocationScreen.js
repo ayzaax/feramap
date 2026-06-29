@@ -1,6 +1,8 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 
-export default function LocationScreen({ navigation }) {
+export default function LocationScreen({ navigation, route }) {
+  const { catId, catName } = route.params ?? {};
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Cat spotted here?</Text>
@@ -17,7 +19,13 @@ export default function LocationScreen({ navigation }) {
 
       <TouchableOpacity
         style={styles.button}
-        onPress={() => navigation.navigate('Identify')}
+        onPress={() => {
+          if (catId) {
+            navigation.navigate('Camera', { catId, catName });
+          } else {
+            navigation.navigate('Identify');
+          }
+        }}
       >
         <Text style={styles.buttonText}>Looks right  →</Text>
       </TouchableOpacity>

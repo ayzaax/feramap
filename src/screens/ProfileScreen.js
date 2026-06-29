@@ -8,6 +8,7 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  TextInput,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
@@ -25,9 +26,13 @@ const STATUS_COLORS = {
 export default function ProfileScreen({ navigation }) {
   const [user, setUser] = useState(null);
   const [avatarUrl, setAvatarUrl] = useState(null);
+  const [displayName, setDisplayName] = useState('');
+  const [role, setRole] = useState('volunteer');
+  const [colonyName, setColonyName] = useState('Ciudad Lerdo');
   const [followedCats, setFollowedCats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const fetchProfileData = async () => {
     try {
@@ -36,9 +41,9 @@ export default function ProfileScreen({ navigation }) {
       setUser(currentUser);
 
       if (currentUser) {
-        // 2. Fetch avatar and followed cats in parallel
+        // 2. Fetch avatar, profile details, and followed cats in parallel
         const [profileRes, followsRes] = await Promise.all([
-          supabase.from('profiles').select('avatar_url').eq('id', currentUser.id).maybeSingle(),
+          supabase.from('profiles').select('avatar_url, display_name, role, colonies(name)').eq('id', currentUser.id).maybeSingle(),
           supabase.from('user_follows').select(`
             cat_id,
             cats (
@@ -52,8 +57,11 @@ export default function ProfileScreen({ navigation }) {
           `).eq('user_id', currentUser.id)
         ]);
 
-        if (profileRes.data?.avatar_url) {
-          setAvatarUrl(profileRes.data.avatar_url);
+        if (profileRes.data) {
+          if (profileRes.data.avatar_url) setAvatarUrl(profileRes.data.avatar_url);
+          if (profileRes.data.display_name) setDisplayName(profileRes.data.display_name);
+          if (profileRes.data.role) setRole(profileRes.data.role);
+          if (profileRes.data.colonies?.name) setColonyName(profileRes.data.colonies.name);
         }
 
         if (followsRes.error) throw followsRes.error;
@@ -159,6 +167,28 @@ export default function ProfileScreen({ navigation }) {
     await supabase.auth.signOut();
   };
 
+  const handleSaveProfile = async () => {
+    if (!displayName.trim()) {
+      Alert.alert('Error', 'Display name cannot be empty.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ display_name: displayName.trim() })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      Alert.alert('Success', 'Profile updated successfully!');
+    } catch (err) {
+      console.error('Error saving profile:', err);
+      Alert.alert('Error', 'Failed to save profile.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -197,8 +227,41 @@ export default function ProfileScreen({ navigation }) {
         </TouchableOpacity>
 
         <View style={styles.userInfo}>
-          <Text style={styles.userLabel}>Volunteer Account</Text>
+          <Text style={styles.userLabel}>{role} Account</Text>
+          <Text style={styles.userName}>{displayName || 'Unnamed Volunteer'}</Text>
           <Text style={styles.userEmail}>{user?.email}</Text>
+        </View>
+      </View>
+
+      {/* Profile Settings Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Profile Settings</Text>
+        <View style={styles.settingsCard}>
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabelField}>Display Name</Text>
+            <TextInput
+              style={styles.textInput}
+              value={displayName}
+              onChangeText={setDisplayName}
+              placeholder="Enter your name..."
+              placeholderTextColor="#aaa"
+            />
+          </View>
+
+          <View style={styles.infoGroup}>
+            <Text style={styles.infoLabel}>Assigned Colony</Text>
+            <Text style={styles.infoValue}>{colonyName}</Text>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+            onPress={handleSaveProfile}
+            disabled={saving}
+          >
+            <Text style={styles.saveButtonText}>
+              {saving ? 'Saving...' : 'Save Profile'}
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -443,11 +506,80 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1.5,
     borderColor: '#E8725A',
-    marginBottom: 20,
+    marginBottom: 40,
+    marginTop: 12,
   },
   logoutText: {
     color: '#E8725A',
     fontSize: 16,
     fontWeight: '600',
+  },
+  userName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 2,
+  },
+  settingsCard: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: '#B85CE8',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  inputLabelField: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 8,
+  },
+  textInput: {
+    backgroundColor: '#FFF0F3',
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 15,
+    color: '#333',
+    borderWidth: 1,
+    borderColor: '#FFD9E2',
+  },
+  infoGroup: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F5F5F5',
+    marginBottom: 8,
+  },
+  infoLabel: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  infoValue: {
+    fontSize: 15,
+    color: '#333',
+    fontWeight: '600',
+  },
+  saveButton: {
+    backgroundColor: '#9B30D9',
+    borderRadius: 14,
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

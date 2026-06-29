@@ -1,20 +1,7 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-
-const FAKE_COLONY = {
-  name: 'Colonia Centro',
-  lastUpdated: '2 hours ago',
-  knownCats: 34,
-  newThisWeek: 3,
-  needTrapping: 8,
-  reporters: 47,
-  neuteredTotal: 19,
-  totalCats: 34,
-  zones: [
-    { name: 'Street Juárez', neutered: 12, total: 14 },
-    { name: 'Plaza Central', neutered: 5, total: 10 },
-    { name: 'Barrio Antiguo', neutered: 2, total: 10 },
-  ],
-};
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { supabase } from '../lib/supabase';
 
 function ProgressBar({ value, total }) {
   const pct = total > 0 ? value / total : 0;
@@ -26,23 +13,108 @@ function ProgressBar({ value, total }) {
 }
 
 export default function ColonyScreen({ navigation }) {
-  const c = FAKE_COLONY;
+  const [colonyName, setColonyName] = useState('Colonia Centro');
+  const [lastUpdated, setLastUpdated] = useState('Updating...');
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    knownCats: 0,
+    newThisWeek: 0,
+    needTrapping: 0,
+    reporters: 0,
+    neuteredTotal: 0,
+  });
+  const [zones, setZones] = useState([]);
+
+  const fetchColonyData = async () => {
+    try {
+      const [colonyRes, catsRes, zonesRes, reportersRes] = await Promise.all([
+        supabase.from('colonies').select('name').limit(1).maybeSingle(),
+        supabase.from('cats').select('id, status, created_at, zone_id'),
+        supabase.from('zones').select('id, name'),
+        supabase.from('profiles').select('*', { count: 'exact', head: true })
+      ]);
+
+      if (colonyRes.data?.name) {
+        setColonyName(colonyRes.data.name);
+      }
+
+      const cats = catsRes.data || [];
+      const zonesData = zonesRes.data || [];
+      const reportersCount = reportersRes.count || 0;
+
+      // 1. Calculate overall statistics
+      const knownCats = cats.length;
+      const neuteredTotal = cats.filter(c => c.status === 'neutered' || c.status === 'returned').length;
+      const needTrapping = cats.filter(c => c.status === 'spotted' || c.status === 'trapped').length;
+
+      // Calculate cats logged in the last 7 days
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      const newThisWeek = cats.filter(c => new Date(c.created_at) >= oneWeekAgo).length;
+
+      setStats({
+        knownCats,
+        newThisWeek,
+        needTrapping,
+        reporters: reportersCount,
+        neuteredTotal,
+      });
+
+      // 2. Calculate statistics by zone
+      const processedZones = zonesData.map(zone => {
+        const zoneCats = cats.filter(c => c.zone_id === zone.id);
+        const total = zoneCats.length;
+        const neutered = zoneCats.filter(c => c.status === 'neutered' || c.status === 'returned').length;
+        return {
+          id: zone.id,
+          name: zone.name,
+          total,
+          neutered,
+        };
+      });
+
+      setZones(processedZones);
+
+      // Set last updated timestamp
+      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      setLastUpdated(`Updated at ${now}`);
+    } catch (err) {
+      console.error('Error fetching colony data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchColonyData();
+    }, [])
+  );
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#B85CE8" />
+        <Text style={styles.loadingText}>Loading colony statistics...</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>{c.name}</Text>
-      <Text style={styles.subtitle}>Last updated {c.lastUpdated}</Text>
+      <Text style={styles.title}>{colonyName}</Text>
+      <Text style={styles.subtitle}>{lastUpdated}</Text>
 
       {/* stat cards */}
       <View style={styles.statCard}>
-        <Text style={styles.statCardText}>{c.knownCats} known cats</Text>
-        <Text style={styles.statCardGreen}>+{c.newThisWeek} this week</Text>
+        <Text style={styles.statCardText}>{stats.knownCats} known cats</Text>
+        <Text style={styles.statCardGreen}>+{stats.newThisWeek} this week</Text>
       </View>
       <View style={styles.statCard}>
-        <Text style={styles.statCardText}>{c.needTrapping} need trapping</Text>
+        <Text style={styles.statCardText}>{stats.needTrapping} need trapping</Text>
       </View>
       <View style={styles.statCard}>
-        <Text style={styles.statCardText}>{c.reporters} reporters</Text>
+        <Text style={styles.statCardText}>{stats.reporters} volunteers</Text>
       </View>
 
       <TouchableOpacity
@@ -56,21 +128,27 @@ export default function ColonyScreen({ navigation }) {
       <Text style={styles.sectionLabel}>Overall progress</Text>
       <View style={styles.progressRow}>
         <Text style={styles.progressLabel}>Colony neutered</Text>
-        <Text style={styles.progressFraction}>{c.neuteredTotal}/{c.totalCats}</Text>
+        <Text style={styles.progressFraction}>{stats.neuteredTotal}/{stats.knownCats}</Text>
       </View>
-      <ProgressBar value={c.neuteredTotal} total={c.totalCats} />
+      <ProgressBar value={stats.neuteredTotal} total={stats.knownCats} />
 
       {/* by zone */}
       <Text style={styles.sectionLabel}>By neighbourhood zone</Text>
-      {c.zones.map((zone) => (
-        <View key={zone.name} style={styles.zoneBlock}>
-          <View style={styles.progressRow}>
-            <Text style={styles.progressLabel}>{zone.name}</Text>
-            <Text style={styles.progressFraction}>{zone.neutered}/{zone.total}</Text>
-          </View>
-          <ProgressBar value={zone.neutered} total={zone.total} />
+      {zones.length === 0 ? (
+        <View style={styles.emptyZonesCard}>
+          <Text style={styles.emptyText}>No active zones defined yet.</Text>
         </View>
-      ))}
+      ) : (
+        zones.map((zone) => (
+          <View key={zone.id} style={styles.zoneBlock}>
+            <View style={styles.progressRow}>
+              <Text style={styles.progressLabel}>{zone.name}</Text>
+              <Text style={styles.progressFraction}>{zone.neutered}/{zone.total}</Text>
+            </View>
+            <ProgressBar value={zone.neutered} total={zone.total} />
+          </View>
+        ))
+      )}
 
       {/* export button */}
       <TouchableOpacity style={styles.exportButton}>
@@ -88,6 +166,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 60,
     paddingBottom: 40,
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    color: '#888',
+    fontSize: 14,
   },
   title: {
     fontSize: 28,
@@ -151,6 +240,20 @@ const styles = StyleSheet.create({
   },
   zoneBlock: {
     marginBottom: 12,
+  },
+  emptyZonesCard: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#eee',
+    borderStyle: 'dashed',
+  },
+  emptyText: {
+    fontSize: 13,
+    color: '#888',
   },
   exportButton: {
     flexDirection: 'row',

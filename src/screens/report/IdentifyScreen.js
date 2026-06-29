@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { supabase } from '../../lib/supabase';
 
-export default function IdentifyScreen({ navigation }) {
+export default function IdentifyScreen({ navigation, route }) {
+  const { location } = route.params ?? {};
   const [cats, setCats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState('new');
@@ -84,7 +85,14 @@ export default function IdentifyScreen({ navigation }) {
 
       <TouchableOpacity
         style={styles.button}
-        onPress={() => navigation.navigate('Camera')}
+        onPress={() => {
+          if (selected === 'new') {
+            navigation.navigate('Camera', { location });
+          } else {
+            const matchedCat = cats.find(c => c.id === selected);
+            navigation.navigate('Camera', { catId: selected, catName: matchedCat?.name, location });
+          }
+        }}
       >
         <Text style={styles.buttonText}>Continue  →</Text>
       </TouchableOpacity>

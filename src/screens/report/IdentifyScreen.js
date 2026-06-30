@@ -55,6 +55,16 @@ export default function IdentifyScreen({ navigation, route }) {
 
   return (
     <View style={styles.container}>
+      {/* Header Row */}
+      <View style={styles.headerRow}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
+          <Text style={styles.headerButtonText}>←</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.getParent()?.goBack()} style={styles.headerButton}>
+          <Text style={styles.headerButtonText}>✕</Text>
+        </TouchableOpacity>
+      </View>
+
       <Text style={styles.title}>Seen this cat before?</Text>
       <Text style={styles.subtitle}>{cats.length} cat{cats.length !== 1 ? 's' : ''} known nearby.{'\n'}Is this one of them?</Text>
 
@@ -112,7 +122,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1a1a1a',
     marginBottom: 8,
-    marginTop: 50,
   },
   subtitle: {
     fontSize: 15,
@@ -186,6 +195,22 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: '700',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 8,
+  },
+  headerButton: {
+    padding: 8,
+    marginTop: -10,
+  },
+  headerButtonText: {
+    fontSize: 28,
+    color: '#9B30D9',
+    fontWeight: '600',
   },
   loadingContainer: {
     flex: 1,

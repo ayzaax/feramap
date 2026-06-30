@@ -41,6 +41,16 @@ export default function CameraScreen({ navigation, route }) {
 
   return (
     <View style={styles.container}>
+      {/* Header Row */}
+      <View style={styles.headerRow}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
+          <Text style={styles.headerButtonText}>←</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.getParent()?.goBack()} style={styles.headerButton}>
+          <Text style={styles.headerButtonText}>✕</Text>
+        </TouchableOpacity>
+      </View>
+
       <Text style={styles.title}>Take a pic!</Text>
       <TouchableOpacity style={styles.button} onPress={takePhoto}>
         <Text style={styles.buttonText}>Open camera</Text>
@@ -85,6 +95,24 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     color: '#9B30D9',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  headerRow: {
+    position: 'absolute',
+    top: 60,
+    left: 24,
+    right: 24,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  headerButton: {
+    padding: 8,
+  },
+  headerButtonText: {
+    fontSize: 28,
+    color: '#9B30D9',
     fontWeight: '600',
   },
 });

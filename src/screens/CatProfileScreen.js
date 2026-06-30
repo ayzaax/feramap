@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIndicator, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIndicator, Animated, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 
@@ -29,6 +29,7 @@ export default function CatProfileScreen({ navigation, route }) {
   const [isAnimating, setIsAnimating] = useState(false);
   const [animationPhase, setAnimationPhase] = useState(null); // 'up' | 'down' | null
   const [isFollowing, setIsFollowing] = useState(false);
+  const [generatingSummary, setGeneratingSummary] = useState(false);
 
   const swipeAnim = useRef(new Animated.ValueXY()).current;
 
@@ -52,23 +53,53 @@ export default function CatProfileScreen({ navigation, route }) {
       { data: profileData, error: profileError },
       { data: sightingData },
       { data: photoData },
-      { data: followData }
+      { data: followData },
+      { data: catSummaryData }
     ] = await Promise.all([
       supabase.rpc('get_cat_profile', { cat_id: catId }),
       supabase.rpc('get_cat_sightings', { cat_id: catId }),
       supabase.from('cat_photos').select('photo_url').eq('cat_id', catId).order('created_at', { ascending: false }),
-      supabase.from('user_follows').select('*').eq('cat_id', catId).maybeSingle()
+      supabase.from('user_follows').select('*').eq('cat_id', catId).maybeSingle(),
+      supabase.from('cats').select('summary').eq('id', catId).maybeSingle()
     ]);
 
     console.log('catId from params:', route.params?.catId);
     console.log('profile data:', JSON.stringify(profileData, null, 2));
     console.log('profile error:', profileError);
 
-    if (profileData?.[0]) setCat(profileData[0]);
+    if (profileData?.[0]) {
+      setCat({
+        ...profileData[0],
+        summary: catSummaryData?.summary || null
+      });
+    }
     if (sightingData) setSightings(sightingData);
     if (photoData?.length > 0) setPhotos(photoData.map(p => p.photo_url));
     if (followData) setIsFollowing(true);
     setLoading(false);
+  };
+
+  const handleGenerateSummary = async () => {
+    if (!cat) return;
+    setGeneratingSummary(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-cat-summary', {
+        body: { catId: cat.id }
+      });
+
+      if (error) throw error;
+      if (data?.summary) {
+        setCat(prev => ({ ...prev, summary: data.summary }));
+        Alert.alert('Success', 'AI summary generated and saved successfully!');
+      } else {
+        throw new Error('No summary returned');
+      }
+    } catch (err) {
+      console.error('Error generating AI summary:', err);
+      Alert.alert('Error', 'Failed to generate AI summary. Make sure your Edge Function is deployed and the GEMINI_API_KEY is configured.');
+    } finally {
+      setGeneratingSummary(false);
+    }
   };
 
   useFocusEffect(
@@ -245,10 +276,42 @@ export default function CatProfileScreen({ navigation, route }) {
       </View>
 
       {/* community summary */}
-      <View style={styles.summaryBox}>
-        <Text style={styles.summaryTitle}>✦  Community summary</Text>
-        <Text style={styles.summaryText}>{cat.summary ?? 'No summary yet.'}</Text>
-      </View>
+      {!cat.summary ? (
+        <TouchableOpacity 
+          style={styles.summaryBox} 
+          onPress={handleGenerateSummary}
+          disabled={generatingSummary}
+          activeOpacity={0.8}
+        >
+          <View style={styles.summaryHeaderRow}>
+            <Text style={styles.summaryTitle}>✦  Community summary</Text>
+            {generatingSummary && <ActivityIndicator size="small" color="#9B30D9" />}
+          </View>
+          <Text style={styles.summaryText}>
+            {generatingSummary 
+              ? 'Generating AI summary...' 
+              : 'No summary yet. Tap here to generate one!'}
+          </Text>
+        </TouchableOpacity>
+      ) : (
+        <View style={styles.summaryBox}>
+          <View style={styles.summaryHeaderRow}>
+            <Text style={styles.summaryTitle}>✦  Community summary</Text>
+            {generatingSummary ? (
+              <ActivityIndicator size="small" color="#9B30D9" />
+            ) : (
+              <TouchableOpacity onPress={handleGenerateSummary} style={styles.refreshButton}>
+                <Text style={styles.refreshIcon}>↻</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          {generatingSummary ? (
+            <Text style={styles.summaryTextGenerating}>Generating AI summary...</Text>
+          ) : (
+            <Text style={styles.summaryText}>{cat.summary}</Text>
+          )}
+        </View>
+      )}
 
       {/* sighting history */}
       <Text style={styles.historyLabel}>Sighting history</Text>
@@ -511,5 +574,31 @@ const styles = StyleSheet.create({
   },
   followingButtonText: {
     color: '#9B30D9',
+  },
+  summaryHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  refreshButton: {
+    padding: 4,
+  },
+  refreshIcon: {
+    fontSize: 16,
+  },
+  summaryTextGenerating: {
+    fontSize: 14,
+    color: '#888',
+    fontStyle: 'italic',
+    lineHeight: 21,
+  },
+  summaryTextPlaceholder: {
+    fontSize: 14,
+    color: '#9B30D9',
+    fontStyle: 'italic',
+    lineHeight: 21,
+    textAlign: 'center',
+    paddingVertical: 12,
   },
 });

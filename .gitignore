@@ -144,3 +144,5 @@ vite.config.ts.timestamp-*
 .claude
 CLAUDE.md
 AGENTS.md
+supabase-go
+supabase_*.tar.gz

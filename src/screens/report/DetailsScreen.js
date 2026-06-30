@@ -50,10 +50,14 @@ export default function DetailsScreen({ navigation, route }) {
     } else {
       // Update existing cat's priority to Urgent if reported as sick or injured
       if (condition === 'injured' || condition === 'sick') {
-        await supabase
+        const { error: priorityError } = await supabase
           .from('cats')
           .update({ priority: 'Urgent' })
           .eq('id', activeCatId);
+
+        if (priorityError) {
+          console.error('Failed to update priority:', priorityError);
+        }
       }
     }
 

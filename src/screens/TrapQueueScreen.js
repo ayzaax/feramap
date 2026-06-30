@@ -57,7 +57,8 @@ export default function TrapQueueScreen({ navigation }) {
             photo_url
           ),
           sightings (
-            created_at
+            created_at,
+            location
           )
         `)
         .in('status', ['spotted', 'trapped']);
@@ -79,11 +80,28 @@ export default function TrapQueueScreen({ navigation }) {
         });
       }
 
-      // 4. Combine data
-      const processed = (catsData || []).map(cat => ({
-        ...cat,
-        assigned_volunteer: profilesMap[cat.assigned_to] || null,
-      }));
+      // 4. Combine data and extract latest coordinates
+      const processed = (catsData || []).map(cat => {
+        // Find the most recent sighting by timestamp to get last known location
+        let latestSighting = null;
+        if (cat.sightings && cat.sightings.length > 0) {
+          latestSighting = cat.sightings.reduce((latest, current) => {
+            return new Date(current.created_at) > new Date(latest.created_at) ? current : latest;
+          });
+        }
+
+        // Extract coordinates from the GeoJSON Point: [longitude, latitude]
+        const coordinates = latestSighting?.location?.coordinates;
+        const longitude = coordinates?.[0] ?? null;
+        const latitude = coordinates?.[1] ?? null;
+
+        return {
+          ...cat,
+          assigned_volunteer: profilesMap[cat.assigned_to] || null,
+          latitude,
+          longitude,
+        };
+      });
 
       setCats(processed);
     } catch (err) {
@@ -143,11 +161,94 @@ export default function TrapQueueScreen({ navigation }) {
       [
         { text: 'Spotted (Needs trapping)', onPress: () => setCatStatusInDb(catId, 'spotted') },
         { text: 'Trapped (In transit/clinic)', onPress: () => setCatStatusInDb(catId, 'trapped') },
-        { text: 'Neutered (Ready to return)', onPress: () => setCatStatusInDb(catId, 'neutered') },
-        { text: 'Returned (Back in colony)', onPress: () => setCatStatusInDb(catId, 'returned') },
+        { text: 'Mark as Returned (Back in colony)', onPress: () => promptNeuteredQuestion(catId, catName) },
         { text: 'Cancel', style: 'cancel' },
       ]
     );
+  };
+
+  const promptNeuteredQuestion = (catId, catName) => {
+    Alert.alert(
+      `Neutered Status`,
+      `Was ${catName || 'this cat'} neutered during this visit?`,
+      [
+        { 
+          text: 'Yes, neutered', 
+          onPress: () => promptConditionUpdate(catId, catName, 'neutered') 
+        },
+        { 
+          text: 'No, not neutered', 
+          onPress: () => promptConditionUpdate(catId, catName, 'returned') 
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
+  const promptConditionUpdate = (catId, catName, newStatus) => {
+    Alert.alert(
+      `Update Condition for ${catName || 'this cat'}`,
+      `What is the cat's current condition after being ${newStatus}?`,
+      [
+        {
+          text: 'Healthy',
+          onPress: () => applyStatusAndCondition(catId, newStatus, 'healthy', 'Medium', 'Healthy')
+        },
+        {
+          text: 'Still recovering',
+          onPress: () => applyStatusAndCondition(catId, newStatus, 'sick', 'Urgent', 'Still recovering')
+        },
+        {
+          text: 'Needs follow-up',
+          onPress: () => applyStatusAndCondition(catId, newStatus, 'sick', 'Urgent', 'Needs follow-up')
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
+  const applyStatusAndCondition = async (catId, newStatus, condition, priority, conditionLabel) => {
+    if (!currentUser) return;
+
+    const catObj = cats.find(c => c.id === catId);
+    const lat = catObj?.latitude ?? 25.5415;
+    const lng = catObj?.longitude ?? -103.5232;
+
+    try {
+      setLoading(true);
+
+      // 1. Update status and priority on the cat
+      const { error: catError } = await supabase
+        .from('cats')
+        .update({ 
+          status: newStatus,
+          priority: priority
+        })
+        .eq('id', catId);
+
+      if (catError) throw catError;
+
+      // 2. Insert a new sighting to record the condition update at the last known location
+      const { error: sightingError } = await supabase
+        .from('sightings')
+        .insert({
+          cat_id: catId,
+          reporter_id: currentUser.id,
+          location: `POINT(${lng} ${lat})`,
+          condition: condition,
+          status: newStatus,
+          notes: `Status updated to ${newStatus}. Condition: ${conditionLabel}.`,
+        });
+
+      if (sightingError) throw sightingError;
+
+      await fetchQueue();
+      Alert.alert('Success', `Status updated to ${newStatus} with condition ${conditionLabel}!`);
+    } catch (err) {
+      console.error('Error updating status/condition:', err);
+      Alert.alert('Error', 'Failed to update status and condition.');
+      setLoading(false);
+    }
   };
 
   const setCatStatusInDb = async (catId, newStatus) => {
@@ -282,7 +383,16 @@ export default function TrapQueueScreen({ navigation }) {
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={styles.cardButtonSecondary}
-                  onPress={() => navigation.navigate('Main', { screen: 'Map', params: { centerOnCat: cat.id } })}
+                  onPress={() => navigation.navigate('Main', { 
+                    screen: 'Map', 
+                    params: { 
+                      centerOnCat: {
+                        id: cat.id,
+                        latitude: cat.latitude,
+                        longitude: cat.longitude,
+                      } 
+                    } 
+                  })}
                 >
                   <Text style={styles.cardButtonTextSecondary}>See on Map</Text>
                 </TouchableOpacity>

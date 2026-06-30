@@ -73,6 +73,14 @@ export default function LocationScreen({ navigation, route }) {
 
   return (
     <View style={styles.container}>
+      {/* Header Row */}
+      <View style={styles.headerRow}>
+        <View />
+        <TouchableOpacity onPress={() => navigation.getParent()?.goBack()} style={styles.headerButton}>
+          <Text style={styles.headerButtonText}>✕</Text>
+        </TouchableOpacity>
+      </View>
+
       <Text style={styles.title}>Cat spotted here?</Text>
       <Text style={styles.subtitle}>
         {errorMsg ? 'GPS Denied. Adjust map manually.' : 'We found your GPS.\nAdjust the map to pin the exact spot.'}
@@ -182,7 +190,23 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 8,
+  },
+  headerButton: {
+    padding: 8,
+    marginTop: -10,
+  },
+  headerButtonText: {
+    fontSize: 28,
+    color: '#9B30D9',
     fontWeight: '600',
   },
 });

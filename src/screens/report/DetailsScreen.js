@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from '../../lib/supabase';
@@ -120,8 +120,29 @@ export default function DetailsScreen({ navigation, route }) {
 
   const isUrgent = condition === 'injured' || condition === 'sick';
 
+  const handleClose = () => {
+    Alert.alert(
+      'Discard report?',
+      'Your progress will be lost.',
+      [
+        { text: 'Keep editing', style: 'cancel' },
+        { text: 'Discard', style: 'destructive', onPress: () => navigation.getParent()?.goBack() }
+      ]
+    );
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      {/* Header Row */}
+      <View style={styles.headerRow}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
+          <Text style={styles.headerButtonText}>←</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={handleClose} style={styles.headerButton}>
+          <Text style={styles.headerButtonText}>✕</Text>
+        </TouchableOpacity>
+      </View>
+
       <Text style={styles.title}>Tell us about them</Text>
       <Text style={styles.subtitle}>All fields optional except condition.</Text>
 
@@ -142,25 +163,13 @@ export default function DetailsScreen({ navigation, route }) {
             placeholderTextColor="#aaa"
             value={name}
             onChangeText={setName}
+            autoCapitalize="words"
           />
         </View>
       )}
 
-      {/* notes input */}
-      <View style={styles.inputBox}>
-        <Text style={styles.inputLabel}>Notes</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Colour, behaviour, location details..."
-          placeholderTextColor="#aaa"
-          value={notes}
-          onChangeText={setNotes}
-          multiline
-        />
-      </View>
-
-      {/* condition chips */}
-      <Text style={styles.conditionLabel}>Condition</Text>
+      {/* condition selector */}
+      <Text style={styles.conditionLabel}>Condition *</Text>
       <View style={styles.chipsRow}>
         {CONDITIONS.map((c) => (
           <TouchableOpacity
@@ -175,6 +184,19 @@ export default function DetailsScreen({ navigation, route }) {
             <Text style={styles.chipText}>{c.label}</Text>
           </TouchableOpacity>
         ))}
+      </View>
+
+      {/* notes input */}
+      <View style={[styles.inputBox, { height: 120 }]}>
+        <Text style={styles.inputLabel}>Notes</Text>
+        <TextInput
+          style={[styles.input, { flex: 1, textAlignVertical: 'top' }]}
+          placeholder="Colour, behaviour, location details..."
+          placeholderTextColor="#aaa"
+          value={notes}
+          onChangeText={setNotes}
+          multiline
+        />
       </View>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -205,7 +227,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1a1a1a',
     marginBottom: 8,
-    marginTop: 45,
   },
   subtitle: {
     fontSize: 15,
@@ -228,6 +249,22 @@ const styles = StyleSheet.create({
   input: {
     fontSize: 14,
     color: '#555',
+  },
+  existingCatHeader: {
+    backgroundColor: '#FFD9E2',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#9B30D9',
+  },
+  existingCatText: {
+    fontSize: 15,
+    color: '#666',
+  },
+  existingCatName: {
+    fontWeight: '700',
+    color: '#9B30D9',
   },
   conditionLabel: {
     fontSize: 15,
@@ -275,22 +312,20 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
   },
-  existingCatHeader: {
-    backgroundColor: '#FFD9E2',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#9B30D9',
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 8,
   },
-  existingCatText: {
-    fontSize: 15,
-    color: '#333',
-    fontWeight: '500',
+  headerButton: {
+    padding: 8,
+    marginTop: -10,
   },
-  existingCatName: {
+  headerButtonText: {
+    fontSize: 28,
     color: '#9B30D9',
-    fontWeight: '700',
-    fontSize: 16,
+    fontWeight: '600',
   },
 });

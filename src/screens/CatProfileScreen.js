@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIndicator, Animated } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 
 const POLAROID_TRANSFORMS = [
@@ -31,48 +32,50 @@ export default function CatProfileScreen({ navigation, route }) {
 
   const swipeAnim = useRef(new Animated.ValueXY()).current;
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      let catId = route?.params?.catId;
+  const fetchProfile = async () => {
+    let catId = route?.params?.catId;
 
-      if (!catId) {
-        const { data: first } = await supabase
-          .rpc('get_cats_with_locations')
-          .limit(1)
-          .single();
-        catId = first?.id;
-      }
+    if (!catId) {
+      const { data: first } = await supabase
+        .rpc('get_cats_with_locations')
+        .limit(1)
+        .single();
+      catId = first?.id;
+    }
 
-      if (!catId) {
-        setLoading(false);
-        return;
-      }
-
-      const [
-        { data: profileData, error: profileError },
-        { data: sightingData },
-        { data: photoData },
-        { data: followData }
-      ] = await Promise.all([
-        supabase.rpc('get_cat_profile', { cat_id: catId }),
-        supabase.rpc('get_cat_sightings', { cat_id: catId }),
-        supabase.from('cat_photos').select('photo_url').eq('cat_id', catId).order('created_at', { ascending: false }),
-        supabase.from('user_follows').select('*').eq('cat_id', catId).maybeSingle()
-      ]);
-
-      console.log('catId from params:', route.params?.catId);
-      console.log('profile data:', JSON.stringify(profileData, null, 2));
-      console.log('profile error:', profileError);
-
-      if (profileData?.[0]) setCat(profileData[0]);
-      if (sightingData) setSightings(sightingData);
-      if (photoData?.length > 0) setPhotos(photoData.map(p => p.photo_url));
-      if (followData) setIsFollowing(true);
+    if (!catId) {
       setLoading(false);
-    };
+      return;
+    }
 
-    fetchProfile();
-  }, []);
+    const [
+      { data: profileData, error: profileError },
+      { data: sightingData },
+      { data: photoData },
+      { data: followData }
+    ] = await Promise.all([
+      supabase.rpc('get_cat_profile', { cat_id: catId }),
+      supabase.rpc('get_cat_sightings', { cat_id: catId }),
+      supabase.from('cat_photos').select('photo_url').eq('cat_id', catId).order('created_at', { ascending: false }),
+      supabase.from('user_follows').select('*').eq('cat_id', catId).maybeSingle()
+    ]);
+
+    console.log('catId from params:', route.params?.catId);
+    console.log('profile data:', JSON.stringify(profileData, null, 2));
+    console.log('profile error:', profileError);
+
+    if (profileData?.[0]) setCat(profileData[0]);
+    if (sightingData) setSightings(sightingData);
+    if (photoData?.length > 0) setPhotos(photoData.map(p => p.photo_url));
+    if (followData) setIsFollowing(true);
+    setLoading(false);
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchProfile();
+    }, [route?.params?.catId])
+  );
 
   const handlePressPhoto = () => {
     if (photos.length <= 1 || isAnimating) return;

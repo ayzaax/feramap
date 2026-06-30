@@ -121,7 +121,7 @@ export default function ColonyScreen({ navigation }) {
         style={styles.trapQueueButton}
         onPress={() => navigation.navigate('TrapQueue')}
       >
-        <Text style={styles.trapQueueButtonText}>🪤  Trap Queue</Text>
+        <Text style={styles.trapQueueButtonText}>Trap Queue</Text>
       </TouchableOpacity>
 
       {/* overall progress */}

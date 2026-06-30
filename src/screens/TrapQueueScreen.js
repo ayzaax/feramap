@@ -49,6 +49,7 @@ export default function TrapQueueScreen({ navigation }) {
           priority,
           status,
           assigned_to,
+          created_at,
           zones (
             name
           ),
@@ -170,7 +171,20 @@ export default function TrapQueueScreen({ navigation }) {
   const filtered = cats.filter(cat => {
     if (activeFilter === 'All') return true;
     if (activeFilter === 'Urgent') return cat.priority === 'Urgent' || cat.priority === 'High';
-    return cat.priority === activeFilter;
+    if (activeFilter === 'New') {
+      const created = new Date(cat.created_at);
+      const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+      return created >= fortyEightHoursAgo;
+    }
+    if (activeFilter === 'Overdue') {
+      // Show if no sightings exist, or if the latest sighting is more than 5 days ago
+      if (!cat.sightings || cat.sightings.length === 0) return true;
+      const dates = cat.sightings.map(s => new Date(s.created_at));
+      const latestSighting = new Date(Math.max(...dates));
+      const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
+      return latestSighting < fiveDaysAgo;
+    }
+    return true;
   });
 
   if (loading) {
@@ -283,7 +297,7 @@ export default function TrapQueueScreen({ navigation }) {
                       style={styles.assignButton}
                       onPress={() => handleAssign(cat.id)}
                     >
-                      <Text style={styles.assignButtonText}>🪤 Claim Task (Assign to me)</Text>
+                      <Text style={styles.assignButtonText}>Claim Task (Assign to me)</Text>
                     </TouchableOpacity>
                   ) : (
                     <View style={styles.disabledAction}>

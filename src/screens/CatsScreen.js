@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, ActivityIndicator } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 
 const FILTERS = ['All', 'Spotted', 'Trapped', 'Neutered', 'Returned'];
@@ -29,39 +30,41 @@ export default function CatsScreen({ navigation }) {
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
 
-  useEffect(() => {
-    const fetchCats = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('cats')
-          .select(`
-            id,
-            name,
-            status,
-            created_at,
-            zones (
-              name
-            ),
-            cat_photos (
-              photo_url
-            ),
-            sightings (
-              created_at
-            )
-          `)
-          .order('created_at', { ascending: false });
+  const fetchCats = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('cats')
+        .select(`
+          id,
+          name,
+          status,
+          created_at,
+          zones (
+            name
+          ),
+          cat_photos (
+            photo_url
+          ),
+          sightings (
+            created_at
+          )
+        `)
+        .order('created_at', { ascending: false });
 
-        if (error) throw error;
-        setCats(data || []);
-      } catch (err) {
-        console.error('Error fetching cats:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+      if (error) throw error;
+      setCats(data || []);
+    } catch (err) {
+      console.error('Error fetching cats:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchCats();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchCats();
+    }, [])
+  );
 
   const filtered = cats
     .filter(c => activeFilter === 'All' || c.status === activeFilter.toLowerCase())

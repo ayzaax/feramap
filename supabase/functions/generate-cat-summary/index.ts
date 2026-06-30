@@ -13,6 +13,31 @@ serve(async (req) => {
   }
 
   try {
+    // 1. Extract the Authorization header
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Missing or invalid Authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // 2. Verify the token using the Supabase Anon client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    })
+
+    const { data: { user }, error: userError } = await userClient.auth.getUser()
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized: Invalid user token' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // 3. Extract the body parameters
     const { catId } = await req.json()
     if (!catId) {
       return new Response(JSON.stringify({ error: 'Missing catId' }), {
@@ -21,8 +46,7 @@ serve(async (req) => {
       })
     }
 
-    // Initialize Supabase Client with Service Role Key to bypass RLS for fetching/updating
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+    // 4. Initialize the Service Role Client to perform database operations
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 

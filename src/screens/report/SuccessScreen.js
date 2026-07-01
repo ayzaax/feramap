@@ -66,7 +66,7 @@ export default function SuccessScreen({ navigation, route }) {
 
       <TouchableOpacity
         style={styles.secondaryButton}
-        onPress={() => navigation.getParent()?.goBack()}
+        onPress={() => navigation.getParent()?.navigate('Main', { screen: 'Map' })}
       >
         <Text style={styles.secondaryButtonText}>Back to map</Text>
       </TouchableOpacity>

@@ -21,6 +21,24 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function formatLastSeen(iso) {
+  if (!iso) return '—';
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const diffMins = Math.max(0, Math.floor(diffMs / 60000));
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 30) return `${diffDays}d ago`;
+
+  const diffMonths = Math.floor(diffDays / 30);
+  if (diffMonths < 12) return `${diffMonths}mo ago`;
+
+  const diffYears = Math.floor(diffDays / 365);
+  return `${diffYears}y ago`;
+}
+
 export default function CatProfileScreen({ navigation, route }) {
   const [cat, setCat] = useState(null);
   const [sightings, setSightings] = useState([]);
@@ -30,6 +48,8 @@ export default function CatProfileScreen({ navigation, route }) {
   const [animationPhase, setAnimationPhase] = useState(null); // 'up' | 'down' | null
   const [isFollowing, setIsFollowing] = useState(false);
   const [generatingSummary, setGeneratingSummary] = useState(false);
+  const [contributors, setContributors] = useState(1);
+  const [lastSeen, setLastSeen] = useState('—');
 
   const swipeAnim = useRef(new Animated.ValueXY()).current;
 
@@ -49,6 +69,9 @@ export default function CatProfileScreen({ navigation, route }) {
       return;
     }
 
+    // Fetch the current user to check follows securely
+    const { data: { user } } = await supabase.auth.getUser();
+
     const [
       { data: profileData, error: profileError },
       { data: sightingData },
@@ -59,8 +82,10 @@ export default function CatProfileScreen({ navigation, route }) {
       supabase.rpc('get_cat_profile', { cat_id: catId }),
       supabase.rpc('get_cat_sightings', { cat_id: catId }),
       supabase.from('cat_photos').select('photo_url').eq('cat_id', catId).order('created_at', { ascending: false }),
-      supabase.from('user_follows').select('*').eq('cat_id', catId).maybeSingle(),
-      supabase.from('cats').select('summary').eq('id', catId).maybeSingle()
+      user 
+        ? supabase.from('user_follows').select('*').eq('cat_id', catId).eq('user_id', user.id).maybeSingle()
+        : Promise.resolve({ data: null }),
+      supabase.from('cats').select('summary, colonies(name)').eq('id', catId).maybeSingle()
     ]);
 
     console.log('catId from params:', route.params?.catId);
@@ -70,10 +95,26 @@ export default function CatProfileScreen({ navigation, route }) {
     if (profileData?.[0]) {
       setCat({
         ...profileData[0],
-        summary: catSummaryData?.summary || null
+        summary: catSummaryData?.summary || null,
+        colony_name: catSummaryData?.colonies?.name || null
       });
     }
-    if (sightingData) setSightings(sightingData);
+    if (sightingData) {
+      setSightings(sightingData);
+      // Calculate unique contributors
+      const uniqueReporters = new Set(sightingData.map(s => s.reporter_id).filter(Boolean));
+      setContributors(Math.max(1, uniqueReporters.size));
+
+      // Calculate last seen dynamically from the latest sighting
+      if (sightingData.length > 0) {
+        const latest = sightingData.reduce((latest, current) => {
+          return new Date(current.created_at) > new Date(latest.created_at) ? current : latest;
+        });
+        setLastSeen(formatLastSeen(latest.created_at));
+      } else {
+        setLastSeen('—');
+      }
+    }
     if (photoData?.length > 0) setPhotos(photoData.map(p => p.photo_url));
     if (followData) setIsFollowing(true);
     setLoading(false);
@@ -255,7 +296,7 @@ export default function CatProfileScreen({ navigation, route }) {
 
       {/* name + location */}
       <Text style={styles.name}>{cat.name}</Text>
-      <Text style={styles.location}>📍 {cat.zone_name ?? '—'} · since {formatDate(cat.created_at)}</Text>
+      <Text style={styles.location}>📍 {cat.zone_name || cat.colony_name || '—'} · since {formatDate(cat.created_at)}</Text>
 
       {/* stats row */}
       <View style={styles.statsRow}>
@@ -265,12 +306,12 @@ export default function CatProfileScreen({ navigation, route }) {
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>1</Text>
+          <Text style={styles.statNumber}>{contributors}</Text>
           <Text style={styles.statLabel}>Contributors</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{cat.last_seen ?? '—'}</Text>
+          <Text style={styles.statNumber}>{lastSeen}</Text>
           <Text style={styles.statLabel}>Last seen</Text>
         </View>
       </View>

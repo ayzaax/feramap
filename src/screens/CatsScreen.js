@@ -21,7 +21,13 @@ function formatLastSeen(iso) {
 
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
-  return `${diffDays}d ago`;
+  if (diffDays < 30) return `${diffDays}d ago`;
+
+  const diffMonths = Math.floor(diffDays / 30);
+  if (diffMonths < 12) return `${diffMonths}mo ago`;
+
+  const diffYears = Math.floor(diffDays / 365);
+  return `${diffYears}y ago`;
 }
 
 export default function CatsScreen({ navigation }) {
@@ -39,6 +45,9 @@ export default function CatsScreen({ navigation }) {
           name,
           status,
           created_at,
+          colonies (
+            name
+          ),
           zones (
             name
           ),
@@ -136,7 +145,7 @@ export default function CatsScreen({ navigation }) {
                   </View>
                 </View>
                 <Text style={styles.catMeta}>
-                  📍 {cat.zones?.name ?? 'Colonia Centro'} · {formatLastSeen(latestSighting)}
+                  📍 {cat.zones?.name || cat.colonies?.name || 'Unknown Location'} · {formatLastSeen(latestSighting)}
                 </Text>
               </View>
             </TouchableOpacity>

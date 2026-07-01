@@ -80,7 +80,13 @@ export default function App() {
     return (
       <SafeAreaProvider>
         <NavigationContainer>
-          <LoginScreen onLogin={() => {}} />
+          <LoginScreen onLogin={(sess) => {
+            setSession(sess);
+            if (sess) {
+              setCheckingProfile(true);
+              checkProfileCompletion(sess.user.id);
+            }
+          }} />
         </NavigationContainer>
       </SafeAreaProvider>
     );

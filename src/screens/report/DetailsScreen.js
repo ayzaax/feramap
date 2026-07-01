@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
@@ -17,9 +17,31 @@ export default function DetailsScreen({ navigation, route }) {
   const [condition, setCondition] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [colonyId, setColonyId] = useState(null);
 
   const { photoUri, catId, catName } = route.params ?? {};
   const location = route.params?.location ?? { latitude: 25.5428, longitude: -103.4068 };
+
+  useEffect(() => {
+    const fetchUserColony = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('colony_id')
+            .eq('id', user.id)
+            .maybeSingle();
+          if (profile?.colony_id) {
+            setColonyId(profile.colony_id);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching user colony:', err);
+      }
+    };
+    fetchUserColony();
+  }, []);
 
   const handleSubmit = async () => {
     if (!condition) return;
@@ -36,7 +58,7 @@ export default function DetailsScreen({ navigation, route }) {
           name: name.trim() || null,
           status: 'spotted',
           priority: condition === 'injured' || condition === 'sick' ? 'Urgent' : 'Medium',
-          colony_id: '00000000-0000-0000-0000-000000000001',
+          colony_id: colonyId || '00000000-0000-0000-0000-000000000001',
         })
         .select()
         .single();

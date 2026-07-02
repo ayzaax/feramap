@@ -24,6 +24,8 @@ function formatDate(iso) {
 function formatLastSeen(iso) {
   if (!iso) return '—';
   const diffMs = Date.now() - new Date(iso).getTime();
+  if (diffMs < 60000) return 'Just now';
+
   const diffMins = Math.max(0, Math.floor(diffMs / 60000));
   const diffHours = Math.floor(diffMins / 60);
   const diffDays = Math.floor(diffHours / 24);

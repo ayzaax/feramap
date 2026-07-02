@@ -26,6 +26,9 @@ export default function ColonyScreen({ navigation }) {
     needTrapping: 0,
     reporters: 0,
     neuteredTotal: 0,
+    earliestCatDate: '—',
+    addedThisMonth: 0,
+    urgentCats: 0,
   });
   const [zones, setZones] = useState([]);
 
@@ -62,7 +65,7 @@ export default function ColonyScreen({ navigation }) {
 
       const [colonyRes, catsRes, zonesRes, reportersRes] = await Promise.all([
         supabase.from('colonies').select('name').eq('id', colonyId).maybeSingle(),
-        supabase.from('cats').select('id, status, created_at, zone_id').eq('colony_id', colonyId),
+        supabase.from('cats').select('id, status, priority, created_at, zone_id').eq('colony_id', colonyId),
         supabase.from('zones').select('id, name').eq('colony_id', colonyId),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('colony_id', colonyId)
       ]);
@@ -92,12 +95,33 @@ export default function ColonyScreen({ navigation }) {
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
       const newThisWeek = cats.filter(c => new Date(c.created_at) >= oneWeekAgo).length;
 
+      // Calculate earliest cat creation date
+      const earliestDate = cats.length > 0 
+        ? new Date(Math.min(...cats.map(c => new Date(c.created_at))))
+        : null;
+      const earliestCatDateFormatted = earliestDate
+        ? earliestDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        : '—';
+
+      // Calculate cats added this calendar month
+      const nowMonth = new Date();
+      const addedThisMonth = cats.filter(c => {
+        const catDate = new Date(c.created_at);
+        return catDate.getMonth() === nowMonth.getMonth() && catDate.getFullYear() === nowMonth.getFullYear();
+      }).length;
+
+      // Calculate urgent / injured cats count
+      const urgentCats = cats.filter(c => c.priority === 'Urgent').length;
+
       setStats({
         knownCats,
         newThisWeek,
         needTrapping,
         reporters: reportersCount,
         neuteredTotal,
+        earliestCatDate: earliestCatDateFormatted,
+        addedThisMonth,
+        urgentCats,
       });
 
       // 2. Calculate statistics by zone
@@ -136,118 +160,133 @@ export default function ColonyScreen({ navigation }) {
             <style>
               body {
                 font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-                color: #333;
+                color: #1a1a1a;
                 padding: 40px;
                 line-height: 1.6;
+                background-color: #ffffff;
               }
               .header {
-                border-bottom: 2px solid #9B30D9;
+                border-bottom: 1px solid #1a1a1a;
                 padding-bottom: 20px;
                 margin-bottom: 30px;
               }
               .title {
-                font-size: 28px;
-                font-weight: bold;
+                font-size: 26px;
+                font-weight: 700;
+                letter-spacing: -0.5px;
                 color: #1a1a1a;
+                text-transform: uppercase;
                 margin: 0;
               }
               .subtitle {
-                font-size: 14px;
+                font-size: 13px;
+                color: #555;
+                margin-top: 8px;
+                font-weight: 500;
+              }
+              .period {
+                font-size: 12px;
                 color: #666;
-                margin-top: 5px;
+                margin-top: 4px;
+                font-style: italic;
               }
               .grid {
                 display: flex;
                 flex-wrap: wrap;
                 justify-content: space-between;
-                margin-bottom: 40px;
+                margin-bottom: 30px;
               }
               .card {
-                background-color: #fcf8ff;
-                border: 1px solid #f3e5f5;
-                border-radius: 12px;
-                padding: 15px;
-                text-align: center;
-                width: 45%;
+                background-color: #f5f5f5;
+                border: 1px solid #e5e5e5;
+                border-radius: 4px;
+                padding: 20px;
+                width: 48%;
                 margin-bottom: 15px;
                 box-sizing: border-box;
               }
               .card-value {
-                font-size: 24px;
-                font-weight: bold;
-                color: #9B30D9;
+                font-size: 28px;
+                font-weight: 700;
+                color: #1a1a1a;
               }
               .card-label {
-                font-size: 14px;
-                color: #666;
-                margin-top: 5px;
+                font-size: 12px;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                color: #555;
+                margin-top: 4px;
               }
               .section-title {
-                font-size: 20px;
-                font-weight: bold;
+                font-size: 18px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
                 color: #1a1a1a;
+                margin-top: 30px;
                 margin-bottom: 20px;
-                border-left: 4px solid #9B30D9;
-                padding-left: 10px;
+                border-left: 3px solid #6B21A8;
+                padding-left: 12px;
               }
               .progress-container {
-                background-color: #f0f0f0;
-                border-radius: 8px;
-                height: 16px;
+                background-color: #e5e5e5;
+                border-radius: 2px;
+                height: 12px;
                 width: 100%;
                 overflow: hidden;
-                margin-bottom: 10px;
+                margin-bottom: 8px;
               }
               .progress-bar {
-                background-color: #1D9E75;
+                background-color: #374151;
                 height: 100%;
               }
               .progress-text {
-                font-size: 14px;
-                font-weight: bold;
+                font-size: 13px;
+                color: #444;
                 margin-bottom: 30px;
               }
               table {
                 width: 100%;
                 border-collapse: collapse;
-                margin-top: 20px;
+                margin-top: 15px;
+                margin-bottom: 30px;
               }
               th, td {
-                padding: 12px 15px;
+                padding: 10px 12px;
                 text-align: left;
-                border-bottom: 1px solid #eee;
+                border-bottom: 1px solid #e5e5e5;
+                font-size: 13px;
               }
               th {
-                background-color: #9B30D9;
-                color: white;
-                font-weight: bold;
+                background-color: #1a1a1a;
+                color: #ffffff;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
               }
               tr:nth-child(even) {
-                background-color: #fafafa;
+                background-color: #f9f9f9;
               }
-              .badge {
-                display: inline-block;
-                padding: 4px 8px;
-                border-radius: 12px;
-                font-size: 12px;
-                font-weight: bold;
-                color: white;
+              .rate-cell {
+                font-weight: 700;
+                color: #1a1a1a;
               }
-              .badge-green { background-color: #1D9E75; }
-              .footer {
-                margin-top: 50px;
+              .summary-line {
                 font-size: 12px;
-                color: #999;
-                text-align: center;
-                border-top: 1px solid #eee;
-                padding-top: 20px;
+                color: #444;
+                margin-top: 40px;
+                padding: 15px;
+                background-color: #f9f9f9;
+                border-left: 3px solid #374151;
               }
             </style>
           </head>
           <body>
             <div class="header">
               <h1 class="title">FeraMap Progress Report</h1>
-              <div class="subtitle">Colony: ${colonyName} &middot; Generated on ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
+              <div class="subtitle">Colony Location: ${colonyName} &middot; Generated on ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
+              <div class="period">Period: ${stats.earliestCatDate} to ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
             </div>
 
             <div class="grid">
@@ -265,7 +304,15 @@ export default function ColonyScreen({ navigation }) {
               </div>
               <div class="card">
                 <div class="card-value">${stats.reporters}</div>
-                <div class="card-label">Active Volunteers</div>
+                <div class="card-label">Community Reporters</div>
+              </div>
+              <div class="card">
+                <div class="card-value">${stats.addedThisMonth}</div>
+                <div class="card-label">Cats Added This Month</div>
+              </div>
+              <div class="card">
+                <div class="card-value">${stats.urgentCats}</div>
+                <div class="card-label">Urgent / Injured Cats</div>
               </div>
             </div>
 
@@ -274,7 +321,7 @@ export default function ColonyScreen({ navigation }) {
               <div class="progress-bar" style="width: ${stats.knownCats > 0 ? (stats.neuteredTotal / stats.knownCats * 100) : 0}%"></div>
             </div>
             <div class="progress-text">
-              ${stats.knownCats > 0 ? Math.round(stats.neuteredTotal / stats.knownCats * 100) : 0}% of the colony has been neutered (${stats.neuteredTotal} of ${stats.knownCats} cats).
+              The overall neuter rate is ${stats.knownCats > 0 ? Math.round(stats.neuteredTotal / stats.knownCats * 100) : 0}% (${stats.neuteredTotal} of ${stats.knownCats} community cats are neutered).
             </div>
 
             <h2 class="section-title">Breakdown by Neighborhood Zone</h2>
@@ -293,18 +340,14 @@ export default function ColonyScreen({ navigation }) {
                     <td><strong>${z.name}</strong></td>
                     <td>${z.neutered}</td>
                     <td>${z.total}</td>
-                    <td>
-                      <span class="badge badge-green">
-                        ${z.total > 0 ? Math.round(z.neutered / z.total * 100) : 0}%
-                      </span>
-                    </td>
+                    <td class="rate-cell">${z.total > 0 ? Math.round(z.neutered / z.total * 100) : 0}%</td>
                   </tr>
                 `).join('')}
               </tbody>
             </table>
 
-            <div class="footer">
-              FeraMap Ciudad Lerdo &bull; Helping community cats, one colony at a time.
+            <div class="summary-line">
+              This report was generated by FeraMap, a community-driven TNR tracking platform for Ciudad Lerdo.
             </div>
           </body>
         </html>

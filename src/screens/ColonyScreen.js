@@ -1,6 +1,9 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
 import { supabase } from '../lib/supabase';
 
 function ProgressBar({ value, total }) {
@@ -16,6 +19,7 @@ export default function ColonyScreen({ navigation }) {
   const [colonyName, setColonyName] = useState('Colonia Centro');
   const [lastUpdated, setLastUpdated] = useState('Updating...');
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [stats, setStats] = useState({
     knownCats: 0,
     newThisWeek: 0,
@@ -27,12 +31,48 @@ export default function ColonyScreen({ navigation }) {
 
   const fetchColonyData = async () => {
     try {
+      // 1. Get current logged-in user
+      const { data: { user } } = await supabase.auth.getUser();
+      let colonyId = null;
+
+      if (user) {
+        // 2. Fetch the user's colony_id from their profile
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('colony_id')
+          .eq('id', user.id)
+          .maybeSingle();
+        colonyId = profile?.colony_id;
+      }
+
+      // If user has no colony, fallback to the first colony in the database so the screen is not empty
+      if (!colonyId) {
+        const { data: firstColony } = await supabase
+          .from('colonies')
+          .select('id')
+          .limit(1)
+          .maybeSingle();
+        colonyId = firstColony?.id;
+      }
+
+      if (!colonyId) {
+        setLoading(false);
+        return;
+      }
+
       const [colonyRes, catsRes, zonesRes, reportersRes] = await Promise.all([
-        supabase.from('colonies').select('name').limit(1).maybeSingle(),
-        supabase.from('cats').select('id, status, created_at, zone_id'),
-        supabase.from('zones').select('id, name'),
-        supabase.from('profiles').select('*', { count: 'exact', head: true })
+        supabase.from('colonies').select('name').eq('id', colonyId).maybeSingle(),
+        supabase.from('cats').select('id, status, created_at, zone_id').eq('colony_id', colonyId),
+        supabase.from('zones').select('id, name').eq('colony_id', colonyId),
+        supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('colony_id', colonyId)
       ]);
+
+      console.log('--- COLONY DIAGNOSTICS ---');
+      console.log('Selected Colony ID:', colonyId);
+      console.log('Colony Name Response:', JSON.stringify(colonyRes, null, 2));
+      console.log('Cats Response:', JSON.stringify(catsRes, null, 2));
+      console.log('Zones Response:', JSON.stringify(zonesRes, null, 2));
+      console.log('Reporters Count:', reportersRes.count);
 
       if (colonyRes.data?.name) {
         setColonyName(colonyRes.data.name);
@@ -82,6 +122,217 @@ export default function ColonyScreen({ navigation }) {
       console.error('Error fetching colony data:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExportReport = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const htmlContent = `
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <style>
+              body {
+                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                color: #333;
+                padding: 40px;
+                line-height: 1.6;
+              }
+              .header {
+                border-bottom: 2px solid #9B30D9;
+                padding-bottom: 20px;
+                margin-bottom: 30px;
+              }
+              .title {
+                font-size: 28px;
+                font-weight: bold;
+                color: #1a1a1a;
+                margin: 0;
+              }
+              .subtitle {
+                font-size: 14px;
+                color: #666;
+                margin-top: 5px;
+              }
+              .grid {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: space-between;
+                margin-bottom: 40px;
+              }
+              .card {
+                background-color: #fcf8ff;
+                border: 1px solid #f3e5f5;
+                border-radius: 12px;
+                padding: 15px;
+                text-align: center;
+                width: 45%;
+                margin-bottom: 15px;
+                box-sizing: border-box;
+              }
+              .card-value {
+                font-size: 24px;
+                font-weight: bold;
+                color: #9B30D9;
+              }
+              .card-label {
+                font-size: 14px;
+                color: #666;
+                margin-top: 5px;
+              }
+              .section-title {
+                font-size: 20px;
+                font-weight: bold;
+                color: #1a1a1a;
+                margin-bottom: 20px;
+                border-left: 4px solid #9B30D9;
+                padding-left: 10px;
+              }
+              .progress-container {
+                background-color: #f0f0f0;
+                border-radius: 8px;
+                height: 16px;
+                width: 100%;
+                overflow: hidden;
+                margin-bottom: 10px;
+              }
+              .progress-bar {
+                background-color: #1D9E75;
+                height: 100%;
+              }
+              .progress-text {
+                font-size: 14px;
+                font-weight: bold;
+                margin-bottom: 30px;
+              }
+              table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 20px;
+              }
+              th, td {
+                padding: 12px 15px;
+                text-align: left;
+                border-bottom: 1px solid #eee;
+              }
+              th {
+                background-color: #9B30D9;
+                color: white;
+                font-weight: bold;
+              }
+              tr:nth-child(even) {
+                background-color: #fafafa;
+              }
+              .badge {
+                display: inline-block;
+                padding: 4px 8px;
+                border-radius: 12px;
+                font-size: 12px;
+                font-weight: bold;
+                color: white;
+              }
+              .badge-green { background-color: #1D9E75; }
+              .footer {
+                margin-top: 50px;
+                font-size: 12px;
+                color: #999;
+                text-align: center;
+                border-top: 1px solid #eee;
+                padding-top: 20px;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1 class="title">FeraMap Progress Report</h1>
+              <div class="subtitle">Colony: ${colonyName} &middot; Generated on ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
+            </div>
+
+            <div class="grid">
+              <div class="card">
+                <div class="card-value">${stats.knownCats}</div>
+                <div class="card-label">Total Known Cats</div>
+              </div>
+              <div class="card">
+                <div class="card-value">${stats.neuteredTotal}</div>
+                <div class="card-label">Neutered Cats</div>
+              </div>
+              <div class="card">
+                <div class="card-value">${stats.needTrapping}</div>
+                <div class="card-label">Trapping Needed</div>
+              </div>
+              <div class="card">
+                <div class="card-value">${stats.reporters}</div>
+                <div class="card-label">Active Volunteers</div>
+              </div>
+            </div>
+
+            <h2 class="section-title">Overall Neuter Rate</h2>
+            <div class="progress-container">
+              <div class="progress-bar" style="width: ${stats.knownCats > 0 ? (stats.neuteredTotal / stats.knownCats * 100) : 0}%"></div>
+            </div>
+            <div class="progress-text">
+              ${stats.knownCats > 0 ? Math.round(stats.neuteredTotal / stats.knownCats * 100) : 0}% of the colony has been neutered (${stats.neuteredTotal} of ${stats.knownCats} cats).
+            </div>
+
+            <h2 class="section-title">Breakdown by Neighborhood Zone</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Zone Name</th>
+                  <th>Neutered</th>
+                  <th>Total Cats</th>
+                  <th>Neuter Rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${zones.map(z => `
+                  <tr>
+                    <td><strong>${z.name}</strong></td>
+                    <td>${z.neutered}</td>
+                    <td>${z.total}</td>
+                    <td>
+                      <span class="badge badge-green">
+                        ${z.total > 0 ? Math.round(z.neutered / z.total * 100) : 0}%
+                      </span>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+
+            <div class="footer">
+              FeraMap Ciudad Lerdo &bull; Helping community cats, one colony at a time.
+            </div>
+          </body>
+        </html>
+      `;
+
+      const { uri: tempUri } = await Print.printToFileAsync({ html: htmlContent });
+
+      // Create a friendly filename
+      const cleanColonyName = colonyName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+      const friendlyName = `FeraMap_Progress_Report_${cleanColonyName}.pdf`;
+      const targetUri = `${FileSystem.documentDirectory}${friendlyName}`;
+
+      // Copy the PDF to the document directory with the friendly name
+      await FileSystem.copyAsync({
+        from: tempUri,
+        to: targetUri,
+      });
+
+      await Sharing.shareAsync(targetUri, {
+        mimeType: 'application/pdf',
+        dialogTitle: `FeraMap Progress Report - ${colonyName}`,
+        UTI: 'com.adobe.pdf',
+      });
+    } catch (err) {
+      console.error('Error exporting PDF:', err);
+      Alert.alert('Error', 'Failed to generate and share the PDF report.');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -151,9 +402,19 @@ export default function ColonyScreen({ navigation }) {
       )}
 
       {/* export button */}
-      <TouchableOpacity style={styles.exportButton}>
-        <Text style={styles.exportIcon}>📄</Text>
-        <Text style={styles.exportText}>Export progress report</Text>
+      <TouchableOpacity 
+        style={[styles.exportButton, exporting && { opacity: 0.6 }]}
+        onPress={handleExportReport}
+        disabled={exporting}
+      >
+        {exporting ? (
+          <ActivityIndicator color="#fff" size="small" />
+        ) : (
+          <>
+            <Text style={styles.exportIcon}>📄</Text>
+            <Text style={styles.exportText}>Export progress report</Text>
+          </>
+        )}
       </TouchableOpacity>
     </ScrollView>
   );

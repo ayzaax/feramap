@@ -12,93 +12,37 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system/legacy';
-import { decode } from 'base64-arraybuffer';
 import { supabase } from '../lib/supabase';
+
+const AVATAR_OPTIONS = [
+  { key: 'cat_orange_tabby', label: 'Orange Tabby' },
+  { key: 'cat_black', label: 'Black Cat' },
+  { key: 'cat_white', label: 'Snow White' },
+  { key: 'cat_grey', label: 'Grey Ghost' },
+  { key: 'cat_calico', label: 'Calico' },
+  { key: 'cat_brown_tabby', label: 'Brown Tabby' },
+  { key: 'cat_ginger', label: 'Ginger' },
+  { key: 'cat_tuxedo', label: 'Tuxedo' },
+];
+
+const AVATAR_MAP = {
+  cat_orange_tabby: require('../../assets/avatars/cat_orange_tabby.png'),
+  cat_black: require('../../assets/avatars/cat_black.png'),
+  cat_white: require('../../assets/avatars/cat_white.png'),
+  cat_grey: require('../../assets/avatars/cat_grey.png'),
+  cat_calico: require('../../assets/avatars/cat_calico.png'),
+  cat_brown_tabby: require('../../assets/avatars/cat_brown_tabby.png'),
+  cat_ginger: require('../../assets/avatars/cat_ginger.png'),
+  cat_tuxedo: require('../../assets/avatars/cat_tuxedo.png'),
+};
 
 export default function OnboardingScreen({ onComplete }) {
   const [displayName, setDisplayName] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState(null);
+  const [avatarUrl, setAvatarUrl] = useState('cat_orange_tabby');
   const [colonies, setColonies] = useState([]);
   const [selectedColony, setSelectedColony] = useState(null);
-  const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    const fetchColonies = async () => {
-      try {
-        const { data, error } = await supabase.from('colonies').select('id, name');
-        if (error) throw error;
-        setColonies(data || []);
-        if (data && data.length > 0) {
-          // Default to the first colony (which will be Ciudad Lerdo)
-          setSelectedColony(data[0].id);
-        }
-      } catch (err) {
-        console.error('Error fetching colonies:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchColonies();
-  }, []);
-
-  const handlePickAvatar = async () => {
-    try {
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permissionResult.granted) {
-        Alert.alert('Permission Denied', 'Permission to access your photos is required.');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: 'images',
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.5,
-      });
-
-      if (result.canceled || !result.assets?.[0]?.uri) return;
-
-      await handleUploadAvatar(result.assets[0].uri);
-    } catch (err) {
-      console.error('Error picking avatar:', err);
-    }
-  };
-
-  const handleUploadAvatar = async (uri) => {
-    setUploading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const base64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: 'base64',
-      });
-      const arrayBuffer = decode(base64);
-      const fileName = `${user.id}/avatar-${Date.now()}.jpg`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('cat-photos')
-        .upload(fileName, arrayBuffer, { contentType: 'image/jpeg', upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('cat-photos')
-        .getPublicUrl(fileName);
-
-      setAvatarUrl(publicUrl);
-    } catch (err) {
-      console.error('Error uploading avatar:', err);
-      Alert.alert('Error', 'Failed to upload photo.');
-    } finally {
-      setUploading(false);
-    }
-  };
 
   const handleSubmit = async () => {
     if (!displayName.trim()) {
@@ -153,25 +97,44 @@ export default function OnboardingScreen({ onComplete }) {
         <Text style={styles.title}>Welcome to FeraMap!</Text>
         <Text style={styles.subtitle}>Let's set up your volunteer profile before we start.</Text>
 
-        {/* Avatar Uploader */}
-        <TouchableOpacity
-          style={styles.avatarContainer}
-          onPress={handlePickAvatar}
-          disabled={uploading}
-        >
-          {uploading ? (
-            <View style={styles.avatarPlaceholder}>
-              <ActivityIndicator color="#9B30D9" />
-            </View>
-          ) : avatarUrl ? (
-            <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
-          ) : (
-            <View style={styles.avatarPlaceholder}>
-              <Text style={styles.avatarIcon}>📷</Text>
-              <Text style={styles.avatarUploadText}>Add Photo</Text>
-            </View>
-          )}
-        </TouchableOpacity>
+        {/* Avatar Selection Section */}
+        <View style={styles.avatarSection}>
+          <Text style={styles.avatarSectionTitle}>Choose your cat</Text>
+          <Text style={styles.avatarSectionSubtitle}>Pick the cat that represents you best</Text>
+          
+          <View style={styles.avatarGrid}>
+            {AVATAR_OPTIONS.map((option) => {
+              const isSelected = avatarUrl === option.key;
+              return (
+                <TouchableOpacity
+                  key={option.key}
+                  style={[
+                    styles.avatarWrapper,
+                    isSelected && { transform: [{ scale: 1.08 }] }
+                  ]}
+                  onPress={() => setAvatarUrl(option.key)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[
+                    styles.avatarCircle,
+                    isSelected ? styles.avatarCircleSelected : styles.avatarCircleUnselected
+                  ]}>
+                    <Image source={AVATAR_MAP[option.key]} style={styles.avatarGridImage} />
+                  </View>
+                  {isSelected && (
+                    <View style={styles.checkBadge}>
+                      <Text style={styles.checkBadgeText}>✓</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          
+          <Text style={styles.pickedText}>
+            You picked: <Text style={styles.pickedName}>{AVATAR_OPTIONS.find(o => o.key === avatarUrl)?.label || ''}</Text>
+          </Text>
+        </View>
 
         {/* Display Name Input */}
         <View style={styles.inputContainer}>
@@ -255,36 +218,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 36,
   },
-  avatarContainer: {
-    marginBottom: 32,
-  },
-  avatarImage: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    borderWidth: 3,
-    borderColor: '#9B30D9',
-  },
-  avatarPlaceholder: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: '#FFD9E2',
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarIcon: {
-    fontSize: 32,
-    marginBottom: 4,
-  },
-  avatarUploadText: {
-    fontSize: 12,
-    color: '#9B30D9',
-    fontWeight: '600',
-  },
   inputContainer: {
     width: '100%',
     marginBottom: 24,
@@ -354,10 +287,92 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: '#FFF0F3',
-    justifyContent: 'center',
+  avatarSection: {
+    width: '100%',
     alignItems: 'center',
+    marginBottom: 32,
+  },
+  avatarSectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  avatarSectionSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  avatarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: 12,
+  },
+  avatarWrapper: {
+    width: '22%',
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    marginBottom: 16,
+  },
+  avatarCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 6,
+  },
+  avatarCircleUnselected: {
+    backgroundColor: '#FFD9E2',
+  },
+  avatarCircleSelected: {
+    backgroundColor: '#ffffff',
+    borderWidth: 3,
+    borderColor: '#B85CE8',
+  },
+  avatarGridImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'contain',
+  },
+  checkBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#B85CE8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#ffffff',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
+  },
+  checkBadgeText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  pickedText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  pickedName: {
+    color: '#B85CE8',
+    fontWeight: '700',
   },
 });

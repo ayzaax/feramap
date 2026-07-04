@@ -107,7 +107,9 @@ export default function DetailsScreen({ navigation, route }) {
           encoding: 'base64',
         });
         const arrayBuffer = decode(base64);
-        const fileName = `${activeCatId}/${Date.now()}.jpg`;
+        const rawCatId = activeCatId.replace(/[^a-zA-Z0-9-]/g, '');
+        const timestamp = Date.now();
+        const fileName = `${rawCatId}/${timestamp}.jpg`;
         const { error: uploadError } = await supabase.storage
           .from('cat-photos')
           .upload(fileName, arrayBuffer, { contentType: 'image/jpeg', upsert: true });

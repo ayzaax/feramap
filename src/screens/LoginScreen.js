@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { supabase } from '../lib/supabase';
 
@@ -52,6 +53,24 @@ export default function LoginScreen({ onLogin }) {
       setLoading(false);
     } else {
       onLogin(data?.session);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      Alert.alert('Email Required', 'Please enter your email address first.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+    if (error) {
+      setError(error.message);
+      Alert.alert('Error', error.message);
+      setLoading(false);
+    } else {
+      Alert.alert('Success', 'Password reset email sent! Check your inbox.');
+      setLoading(false);
     }
   };
 
@@ -111,7 +130,7 @@ export default function LoginScreen({ onLogin }) {
 
         {/* forgot password — login only */}
         {isLogin && (
-          <TouchableOpacity>
+          <TouchableOpacity onPress={handleForgotPassword} disabled={loading}>
             <Text style={styles.forgotText}>I forgot my password</Text>
           </TouchableOpacity>
         )}

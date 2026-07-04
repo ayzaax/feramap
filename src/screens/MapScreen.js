@@ -29,6 +29,7 @@ export default function MapScreen({ navigation, route }) {
   const [cats, setCats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('All');
+  const [initialRegion, setInitialRegion] = useState(null);
 
   const fetchCats = async () => {
     try {
@@ -53,6 +54,27 @@ export default function MapScreen({ navigation, route }) {
       });
 
       setCats(processed);
+
+      if (processed.length > 0) {
+        const lats = processed.map(c => c.latitude);
+        const lngs = processed.map(c => c.longitude);
+        const centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
+        const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
+        setInitialRegion({
+          latitude: centerLat,
+          longitude: centerLng,
+          latitudeDelta: Math.max(Math.max(...lats) - Math.min(...lats), 0.01) * 1.5,
+          longitudeDelta: Math.max(Math.max(...lngs) - Math.min(...lngs), 0.01) * 1.5,
+        });
+      } else {
+        const loc = await Location.getCurrentPositionAsync({}).catch(() => null);
+        setInitialRegion({
+          latitude: loc?.coords.latitude ?? 25.5428,
+          longitude: loc?.coords.longitude ?? -103.4068,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        });
+      }
     } catch (err) {
       console.error('Error fetching cats for map:', err);
     } finally {
@@ -100,7 +122,7 @@ export default function MapScreen({ navigation, route }) {
     activeFilter === 'All' || cat.status.toLowerCase() === activeFilter.toLowerCase()
   );
 
-  if (loading) {
+  if (loading || !initialRegion) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#B85CE8" />
@@ -114,12 +136,7 @@ export default function MapScreen({ navigation, route }) {
       <MapView
         ref={mapRef}
         style={styles.map}
-        initialRegion={{
-          latitude: 25.5428,
-          longitude: -103.4068,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        }}
+        initialRegion={initialRegion}
         showsUserLocation
         showsMyLocationButton={false}
       >

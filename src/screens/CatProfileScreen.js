@@ -183,6 +183,30 @@ export default function CatProfileScreen({ navigation, route }) {
     });
   };
 
+  const handleDelete = async () => {
+    Alert.alert(
+      'Delete cat',
+      `Are you sure you want to permanently delete ${cat.name}? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { error } = await supabase.from('cats').delete().eq('id', cat.id);
+              if (error) throw error;
+              navigation.goBack();
+            } catch (err) {
+              console.error('Error deleting cat:', err);
+              Alert.alert('Error', 'Failed to delete cat. Check RLS policies.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleToggleFollow = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -414,6 +438,10 @@ export default function CatProfileScreen({ navigation, route }) {
         </TouchableOpacity>
       </View>
 
+      <TouchableOpacity onPress={handleDelete} style={styles.deleteLink}>
+        <Text style={styles.deleteLinkText}>Delete this cat</Text>
+      </TouchableOpacity>
+
     </ScrollView>
   );
 }
@@ -635,6 +663,15 @@ const styles = StyleSheet.create({
     color: '#888',
     fontStyle: 'italic',
     lineHeight: 21,
+  },
+  deleteLink: {
+    marginTop: 24,
+    paddingVertical: 8,
+  },
+  deleteLinkText: {
+    fontSize: 13,
+    color: '#bbb',
+    textDecorationLine: 'underline',
   },
   summaryTextPlaceholder: {
     fontSize: 14,

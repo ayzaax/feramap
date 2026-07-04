@@ -44,6 +44,16 @@ export default function OnboardingScreen({ onComplete }) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    supabase
+      .from('colonies')
+      .select('id, name')
+      .then(({ data }) => {
+        if (data) setColonies(data);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
   const handleSubmit = async () => {
     if (!displayName.trim()) {
       Alert.alert('Name Required', 'Please enter your name to complete your profile.');
@@ -121,11 +131,6 @@ export default function OnboardingScreen({ onComplete }) {
                   ]}>
                     <Image source={AVATAR_MAP[option.key]} style={styles.avatarGridImage} />
                   </View>
-                  {isSelected && (
-                    <View style={styles.checkBadge}>
-                      <Text style={styles.checkBadgeText}>✓</Text>
-                    </View>
-                  )}
                 </TouchableOpacity>
               );
             })}
@@ -333,7 +338,7 @@ const styles = StyleSheet.create({
   },
   avatarCircleSelected: {
     backgroundColor: '#ffffff',
-    borderWidth: 3,
+    borderWidth: 4,
     borderColor: '#B85CE8',
   },
   avatarGridImage: {

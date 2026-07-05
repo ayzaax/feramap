@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/cat-logo.png" alt="FeraMap logo" width="120" />
+  <img src="assets/cat-app-logo.png" alt="FeraMap logo" width="120" />
   <h1>FeraMap</h1>
   <p>Community-driven stray cat TNR tracking — built for <strong>#HackTheKitty 2026</strong></p>
 </div>

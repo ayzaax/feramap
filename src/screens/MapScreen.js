@@ -90,26 +90,28 @@ export default function MapScreen({ navigation, route }) {
 
   useEffect(() => {
     const centerOnCat = route.params?.centerOnCat;
-    if (centerOnCat && mapRef.current) {
+    if (centerOnCat && mapRef.current && !loading && initialRegion) {
       const { id, latitude, longitude } = centerOnCat;
-      mapRef.current.animateToRegion({
-        latitude,
-        longitude,
-        latitudeDelta: 0.005,
-        longitudeDelta: 0.005,
-      }, 1000);
+      setTimeout(() => {
+        mapRef.current?.animateToRegion({
+          latitude,
+          longitude,
+          latitudeDelta: 0.005,
+          longitudeDelta: 0.005,
+        }, 1000);
+      }, 300);
 
       // Open the callout for this specific cat after the panning animation finishes
       setTimeout(() => {
         if (id && markerRefs.current[id]) {
           markerRefs.current[id].showCallout();
         }
-      }, 1100);
+      }, 1500);
 
       // Clear params to avoid re-centering on every tab switch
       navigation.setParams({ centerOnCat: undefined });
     }
-  }, [route.params?.centerOnCat]);
+  }, [route.params?.centerOnCat, loading, initialRegion]);
 
   useEffect(() => {
     (async () => {

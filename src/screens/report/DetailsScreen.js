@@ -18,6 +18,7 @@ export default function DetailsScreen({ navigation, route }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [colonyId, setColonyId] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState(null);
 
   const { photoUri, catId, catName } = route.params ?? {};
   const location = route.params?.location ?? { latitude: 25.5428, longitude: -103.4068 };
@@ -27,6 +28,7 @@ export default function DetailsScreen({ navigation, route }) {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
+          setCurrentUserId(user.id);
           const { data: profile } = await supabase
             .from('profiles')
             .select('colony_id')
@@ -88,6 +90,7 @@ export default function DetailsScreen({ navigation, route }) {
       .from('sightings')
       .insert({
         cat_id: activeCatId,
+        reporter_id: currentUserId,
         location: `POINT(${location.longitude} ${location.latitude})`,
         notes: notes.trim() || null,
         condition: condition,

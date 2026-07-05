@@ -90,10 +90,6 @@ export default function CatProfileScreen({ navigation, route }) {
       supabase.from('cats').select('summary, colonies(name)').eq('id', catId).maybeSingle()
     ]);
 
-    console.log('catId from params:', route.params?.catId);
-    console.log('profile data:', JSON.stringify(profileData, null, 2));
-    console.log('profile error:', profileError);
-
     if (profileData?.[0]) {
       setCat({
         ...profileData[0],

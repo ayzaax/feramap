@@ -70,13 +70,6 @@ export default function ColonyScreen({ navigation }) {
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('colony_id', colonyId)
       ]);
 
-      console.log('--- COLONY DIAGNOSTICS ---');
-      console.log('Selected Colony ID:', colonyId);
-      console.log('Colony Name Response:', JSON.stringify(colonyRes, null, 2));
-      console.log('Cats Response:', JSON.stringify(catsRes, null, 2));
-      console.log('Zones Response:', JSON.stringify(zonesRes, null, 2));
-      console.log('Reporters Count:', reportersRes.count);
-
       if (colonyRes.data?.name) {
         setColonyName(colonyRes.data.name);
       }

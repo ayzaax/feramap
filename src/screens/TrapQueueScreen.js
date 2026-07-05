@@ -58,7 +58,8 @@ export default function TrapQueueScreen({ navigation }) {
           ),
           sightings (
             created_at,
-            location
+            location,
+            condition
           )
         `)
         .in('status', ['spotted', 'trapped']);
@@ -95,11 +96,20 @@ export default function TrapQueueScreen({ navigation }) {
         const longitude = coordinates?.[0] ?? null;
         const latitude = coordinates?.[1] ?? null;
 
+        const isUrgentCondition = cat.sightings?.some(
+          s => s.condition === 'injured' || s.condition === 'sick'
+        );
+        const effectivePriority = isUrgentCondition && cat.priority !== 'Urgent'
+          ? 'Urgent'
+          : cat.priority;
+
         return {
           ...cat,
           assigned_volunteer: profilesMap[cat.assigned_to] || null,
           latitude,
           longitude,
+          priority: effectivePriority,
+          isUrgentCondition,
         };
       });
 
@@ -269,6 +279,8 @@ export default function TrapQueueScreen({ navigation }) {
     }
   };
 
+  const PRIORITY_ORDER = { Urgent: 0, High: 1, Medium: 2, Low: 3, Overdue: 4 };
+
   const filtered = cats.filter(cat => {
     if (activeFilter === 'All') return true;
     if (activeFilter === 'Urgent') return cat.priority === 'Urgent' || cat.priority === 'High';
@@ -286,6 +298,10 @@ export default function TrapQueueScreen({ navigation }) {
       return latestSighting < fiveDaysAgo;
     }
     return true;
+  }).sort((a, b) => {
+    const pa = PRIORITY_ORDER[a.priority] ?? 99;
+    const pb = PRIORITY_ORDER[b.priority] ?? 99;
+    return pa - pb;
   });
 
   if (loading) {
@@ -346,7 +362,8 @@ export default function TrapQueueScreen({ navigation }) {
                   <View style={styles.nameRow}>
                     <Text style={styles.catName}>{cat.name || 'Unknown cat'}</Text>
                     <Text style={[styles.badge, { color: PRIORITY_COLORS[cat.priority] || '#9B30D9' }]}>
-                      {cat.priority === 'Urgent' || cat.priority === 'High' ? '🔔 ' : ''}{cat.priority}
+                      {cat.priority === 'Urgent' || cat.priority === 'High' ? '🔔 ' : ''}
+                      {cat.isUrgentCondition ? 'Urgent' : cat.priority}
                     </Text>
                   </View>
                   <Text style={styles.catLocation}>

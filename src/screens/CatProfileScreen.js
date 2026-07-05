@@ -322,7 +322,7 @@ export default function CatProfileScreen({ navigation, route }) {
 
       {/* name + location */}
       <Text style={styles.name}>{cat.name}</Text>
-      <Text style={styles.location}>📍 {cat.zone_name || cat.colony_name || '—'} · since {formatDate(cat.created_at)}</Text>
+      <Text style={styles.location}>📍 {cat.zone_name || cat.colony_name || '—'} · since {sightings.length > 0 ? formatDate(sightings[sightings.length - 1].created_at) : formatDate(cat.created_at)}</Text>
 
       {/* stats row */}
       <View style={styles.statsRow}>
@@ -386,19 +386,26 @@ export default function CatProfileScreen({ navigation, route }) {
         {sightings.length === 0 ? (
           <Text style={styles.empty}>No sightings recorded yet.</Text>
         ) : (
-          sightings.map((s, i) => (
-            <View key={s.id ?? i} style={styles.timelineRow}>
-              <View style={styles.timelineLeft}>
-                <View style={[styles.dot, { backgroundColor: STATUS_COLORS[s.condition] ?? '#9B30D9' }]} />
-                {i < sightings.length - 1 && <View style={styles.line} />}
+          sightings.map((s, i) => {
+            const condition = s.condition ?? 'spotted';
+            const color = STATUS_COLORS[condition] ?? '#9B30D9';
+            const label = condition.charAt(0).toUpperCase() + condition.slice(1);
+            return (
+              <View key={s.id ?? i} style={styles.timelineRow}>
+                <View style={styles.timelineLeft}>
+                  <View style={[styles.dot, { backgroundColor: color }]} />
+                  {i < sightings.length - 1 && <View style={[styles.line, { backgroundColor: color + '40' }]} />}
+                </View>
+                <View style={styles.timelineContent}>
+                  <View style={[styles.conditionPill, { backgroundColor: color + '20', borderColor: color + '60' }]}>
+                    <Text style={[styles.conditionLabel, { color }]}>{label}</Text>
+                  </View>
+                  {s.notes ? <Text style={styles.sightingQuote}>"{s.notes}"</Text> : null}
+                  <Text style={styles.sightingMeta}>{formatDate(s.created_at)}</Text>
+                </View>
               </View>
-              <View style={styles.timelineContent}>
-                <Text style={styles.sightingTitle}>{s.condition ?? 'Sighting'}</Text>
-                {s.notes ? <Text style={styles.sightingQuote}>"{s.notes}"</Text> : null}
-                <Text style={styles.sightingMeta}>{formatDate(s.created_at)}</Text>
-              </View>
-            </View>
-          ))
+            );
+          })
         )}
       </View>
 
@@ -574,7 +581,6 @@ const styles = StyleSheet.create({
   line: {
     width: 2,
     flex: 1,
-    backgroundColor: '#eee',
     marginTop: 4,
     marginBottom: -4,
   },
@@ -583,10 +589,25 @@ const styles = StyleSheet.create({
     paddingLeft: 10,
     paddingBottom: 20,
   },
-  sightingTitle: {
-    fontSize: 15,
+  conditionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    borderRadius: 20,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginBottom: 6,
+    gap: 5,
+  },
+  conditionDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  conditionLabel: {
+    fontSize: 13,
     fontWeight: '700',
-    color: '#1a1a1a',
   },
   sightingQuote: {
     fontSize: 13,

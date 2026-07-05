@@ -26,7 +26,7 @@ FeraMap is a mobile app where community members report stray cat sightings, volu
 <!-- Add screenshots here -->
 | Onboarding | Map | Cat Profile | Colony |
 |---|---|---|---|
-| ![Onboarding](docs/screenshots/onboarding.png) | ![Map](docs/screenshots/map.png) | ![Cat Profile](docs/screenshots/cat_profile.png) | ![Colony](docs/screenshots/colony.png) |
+| ![Onboarding](documentation/screenshots/onboarding.png) | ![Map](documentation/screenshots/map.png) | ![Cat Profile](documentation/screenshots/cat_profile.png) | ![Colony](documentation/screenshots/colony.png) |
 
 ---
 

@@ -101,9 +101,9 @@ export default function OnboardingScreen({ onComplete }) {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior="padding"
     >
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>Welcome to FeraMap!</Text>
         <Text style={styles.subtitle}>Let's set up your volunteer profile before we start.</Text>
 

@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Image,
   KeyboardAvoidingView,
-  Platform,
   ScrollView,
   Alert,
 } from 'react-native';
@@ -79,9 +78,9 @@ export default function LoginScreen({ onLogin }) {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior="padding"
     >
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         {/* cat illustration */}
         <View style={styles.catContainer}>
           <Image

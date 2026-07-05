@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/cat-logo.png" alt="FeraMap logo" width="120" />
+  <img src="assets/cat-app-logo.png" alt="FeraMap logo" width="120" />
   <h1>FeraMap</h1>
   <p>Community-driven stray cat TNR tracking — built for <strong>#HackTheKitty 2026</strong></p>
 </div>
@@ -26,7 +26,7 @@ FeraMap is a mobile app where community members report stray cat sightings, volu
 <!-- Add screenshots here -->
 | Onboarding | Map | Cat Profile | Colony |
 |---|---|---|---|
-| ![Onboarding](docs/screenshots/onboarding.png) | ![Map](docs/screenshots/map.png) | ![Cat Profile](docs/screenshots/cat_profile.png) | ![Colony](docs/screenshots/colony.png) |
+| ![Onboarding](documentation/screenshots/onboarding.png) | ![Map](documentation/screenshots/map.png) | ![Cat Profile](documentation/screenshots/cat_profile.png) | ![Colony](documentation/screenshots/colony.png) |
 
 ---
 

@@ -1,8 +1,32 @@
-# FeraMap
+<div align="center">
+  <img src="assets/cat-logo.png" alt="FeraMap logo" width="120" />
+  <h1>FeraMap</h1>
+  <p>Community-driven stray cat TNR tracking — built for <strong>#HackTheKitty 2026</strong></p>
+</div>
 
-Community-driven stray cat TNR (trap-neuter-return) tracking app, built for #hackthekitty 2026.
+---
 
-FeraMap lets community members spot and name stray cats, volunteers coordinate TNR operations, and organizations track colony progress — all from a single mobile app.
+## What is FeraMap?
+
+Stray cat colonies in Mexican cities like Ciudad Lerdo are managed by small groups of volunteers with no shared tools — sightings get lost in WhatsApp chats, trap coordination happens over phone calls, and nobody has a clear picture of colony progress. FeraMap changes that.
+
+FeraMap is a mobile app where community members report stray cat sightings, volunteers coordinate trap-neuter-return (TNR) operations, and colony managers track progress over time — all in one place. Every sighting is stored with a GPS coordinate, every cat builds a history, and an AI-generated summary gives each cat a community biography based on real volunteer observations.
+
+## Features
+
+- **Interactive map** — color-coded cat markers by TNR status (spotted / trapped / neutered / returned), auto-centered on your colony
+- **Cat profiles** — photo stack, sighting timeline, stats, and AI-generated biography via Google Gemini
+- **Report flow** — GPS pin drop → identify existing or new cat → photo capture → submit sighting in under a minute
+- **Trap queue** — prioritized volunteer coordination with task claiming and status updates
+- **Colony dashboard** — neuter rate progress bars by zone, exportable PDF progress report
+- **Onboarding** — avatar picker, display name, and colony selection on first login
+
+## Screenshots
+
+<!-- Add screenshots here -->
+| Onboarding | Map | Cat Profile | Colony |
+|---|---|---|---|
+| ![Onboarding](docs/screenshots/onboarding.png) | ![Map](docs/screenshots/map.png) | ![Cat Profile](docs/screenshots/cat_profile.png) | ![Colony](docs/screenshots/colony.png) |
 
 ---
 

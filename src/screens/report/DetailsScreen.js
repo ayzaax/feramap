@@ -118,7 +118,7 @@ export default function DetailsScreen({ navigation, route }) {
           .upload(fileName, arrayBuffer, { contentType: 'image/jpeg', upsert: true });
 
         if (uploadError) {
-          console.log('Photo upload error:', uploadError.message);
+          // Silently handle upload error
         } else {
           const { data: { publicUrl } } = supabase.storage
             .from('cat-photos')
@@ -130,9 +130,7 @@ export default function DetailsScreen({ navigation, route }) {
           finalPhotoUri = publicUrl;
         }
       } catch (uploadErr) {
-        console.log('Photo upload error:', JSON.stringify(uploadErr, null, 2));
-        console.log('Photo upload error message:', uploadErr?.message);
-        console.log('photoUri was:', photoUri);
+        // Silently handle upload error
       }
     }
 

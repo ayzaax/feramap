@@ -295,11 +295,6 @@ export default function ProfileScreen({ navigation }) {
                       ]}>
                         <Image source={AVATAR_MAP[option.key]} style={styles.avatarGridImage} />
                       </View>
-                      {isSelected && (
-                        <View style={styles.checkBadge}>
-                          <Text style={styles.checkBadgeText}>✓</Text>
-                        </View>
-                      )}
                     </TouchableOpacity>
                   );
                 })}

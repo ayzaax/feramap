@@ -1,7 +1,20 @@
 <div align="center">
   <img src="assets/cat-app-logo.png" alt="FeraMap logo" width="120" />
   <h1>FeraMap</h1>
-  <p>Community-driven stray cat TNR tracking — built for <strong>#HackTheKitty 2026</strong></p>
+    <p>
+    Community-driven mobile application for coordinating 
+    Trap-Neuter-Return (TNR) efforts.
+  </p>
+
+  <p>
+    Built for <strong>#HackTheKitty 2026</strong> using 
+    React Native, Supabase, PostgreSQL/PostGIS, and Google Gemini.
+  </p>
+
+  <a href="https://youtu.be/hjLeEUVn2tE">
+    🎥 Watch Demo
+  </a>
+  
 </div>
 
 ---
@@ -27,6 +40,20 @@ FeraMap is a mobile app where community members report stray cat sightings, volu
 | Onboarding | Map | Cat Profile | Colony |
 |---|---|---|---|
 | ![Onboarding](documentation/screenshots/onboarding.png) | ![Map](documentation/screenshots/map.png) | ![Cat Profile](documentation/screenshots/cat_profile.png) | ![Colony](documentation/screenshots/colony.png) |
+
+---
+
+## Tech Stack
+
+| Category | Technologies |
+|---|---|
+| Mobile | React Native, Expo |
+| Backend | Supabase, Edge Functions |
+| Database | PostgreSQL, PostGIS |
+| Authentication | Supabase Auth |
+| Storage | Supabase Storage |
+| AI | Google Gemini 2.5 Flash |
+| Maps | React Native Maps |
 
 ---
 
